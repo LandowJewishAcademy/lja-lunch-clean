@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lion Cafe — Staff Orders</title>
+<style>
+  :root {
+    --navy: #16264a;
+    --navy-deep: #0c1830;
+    --gold: #c99a4a;
+    --gold-light: #e6c98a;
+    --gold-deep: #a57930;
+    --cream: #f8f3e6;
+    --paper: #fffdf8;
+    --ink: #182234;
+    --ink-soft: #5c6474;
+    --line: #ddd0a8;
+    --red: #a13d3d;
+    --green: #3f6b4f;
+    --radius: 10px;
+    --serif: Georgia, "Times New Roman", Cambria, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 30px 20px 60px; }
+  h1 {
+    font-family: var(--serif);
+    color: var(--navy);
+    font-size: 1.7rem;
+    margin: 0 0 4px;
+  }
+  .sub { color: var(--ink-soft); margin: 0 0 22px; font-size: 0.9rem; }
+
+  .gate {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 26px;
+    max-width: 380px;
+    margin: 60px auto;
+    text-align: center;
+  }
+  .gate h2 { font-family: var(--serif); color: var(--navy); margin: 0 0 12px; }
+  .gate input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .gate button, .btn {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 7px;
+    background: var(--navy);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .gate button:hover, .btn:hover { background: var(--navy-deep); }
+  .gate .error { color: var(--red); font-size: 0.85rem; margin-top: 6px; min-height: 1.2em; }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .toolbar label { font-size: 0.8rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+  .toolbar input[type="date"], .toolbar select {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font-size: 0.95rem;
+  }
+  .toolbar button {
+    padding: 8px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--navy);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .toolbar button:hover { border-color: var(--gold); }
+
+  section {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+  h2 {
+    font-family: var(--serif);
+    color: var(--navy);
+    font-size: 1.1rem;
+    margin: 0 0 12px;
+  }
+
+  .prep-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .prep-item {
+    background: var(--navy);
+    color: #fff;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .prep-item .count { font-family: var(--serif); font-size: 1.6rem; font-weight: 700; color: var(--gold-light); }
+  .prep-item .name { font-size: 0.85rem; color: #e7e2d2; }
+
+  .prep-day-group { margin-bottom: 16px; }
+  .prep-day-group:last-child { margin-bottom: 0; }
+  .prep-day-heading {
+    font-family: var(--serif);
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th {
+    text-align: left;
+    color: var(--ink-soft);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 8px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  td { padding: 8px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: none; }
+  .status-paid { color: var(--green); font-weight: 700; }
+  .status-pending { color: var(--red); font-weight: 700; }
+
+  table.grade-dash { font-size: 0.82rem; }
+  table.grade-dash th, table.grade-dash td { text-align: center; padding: 6px 5px; }
+  table.grade-dash th.dayCol, table.grade-dash td.dayCol { text-align: left; font-weight: 600; color: var(--navy); white-space: nowrap; }
+  table.grade-dash td.zero { color: var(--line); }
+  table.grade-dash td.totalCol, table.grade-dash th.totalCol { font-weight: 700; color: var(--navy); background: var(--cream); }
+  .print-day-btn {
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--navy);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .print-day-btn:hover { border-color: var(--gold); }
+  .empty { color: var(--ink-soft); font-style: italic; padding: 10px 0; }
+  .loading { color: var(--ink-soft); font-style: italic; }
+</style>
+</head>
+<body>
+
+<div id="gateView" class="gate">
+  <h2>Staff Access</h2>
+  <input type="password" id="passcodeInput" placeholder="Staff passcode" autocomplete="off">
+  <button id="gateSubmit" type="button">View Orders</button>
+  <div class="error" id="gateError"></div>
+</div>
+
+<div id="mainView" class="wrap" style="display:none;">
+  <h1>Lion Cafe — Orders</h1>
+  <p class="sub">Orders from Square checkouts. The date filter below only shows orders with a lunch on that exact day — use "All upcoming" if you're unsure which date to check.</p>
+
+  <div class="toolbar">
+    <label for="dateFilter">Day</label>
+    <input type="date" id="dateFilter">
+    <button id="todayBtn" type="button">Today</button>
+    <button id="allBtn" type="button">All upcoming</button>
+    <label for="gradeFilter" style="margin-left:6px;">Grade</label>
+    <select id="gradeFilter"><option value="">All grades</option></select>
+    <button id="refreshBtn" type="button">Refresh</button>
+    <button id="exportBtn" type="button">Export CSV</button>
+    <button id="printSummaryBtn" type="button">Print Daily Summary</button>
+  </div>
+  <p style="margin-top:-10px; margin-bottom:16px; color:var(--ink-soft); font-size:0.85rem;">
+    To see exactly who ordered: pick a specific <strong>Day</strong> above, then narrow by <strong>Grade</strong> — the order detail table below updates to just that day + grade.
+  </p>
+
+  <section>
+    <h2>Kitchen prep summary</h2>
+    <div id="prepGrid"><p class="loading">Loading…</p></div>
+  </section>
+
+  <section>
+    <h2>Orders by grade, per day</h2>
+    <p style="margin-top:-8px; color:var(--ink-soft); font-size:0.85rem;">Always shows every upcoming day, regardless of the date filter above.</p>
+    <div id="gradeDashboard"><p class="loading">Loading…</p></div>
+  </section>
+
+  <section>
+    <h2>Order detail</h2>
+    <div id="orderTableWrap"><p class="loading">Loading…</p></div>
+  </section>
+</div>
+
+<script>
+  const gateView = document.getElementById("gateView");
+  const mainView = document.getElementById("mainView");
+  const passcodeInput = document.getElementById("passcodeInput");
+  const gateError = document.getElementById("gateError");
+  const dateFilter = document.getElementById("dateFilter");
+
+  const GRADES = ["Kindergarten", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade",
+    "6th Grade", "7th Grade", "8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade"];
+  const GRADE_SHORT = { "Kindergarten": "K", "1st Grade": "1st", "2nd Grade": "2nd", "3rd Grade": "3rd",
+    "4th Grade": "4th", "5th Grade": "5th", "6th Grade": "6th", "7th Grade": "7th", "8th Grade": "8th",
+    "9th Grade": "9th", "10th Grade": "10th", "11th Grade": "11th", "12th Grade": "12th" };
+
+  function todayIso() {
+    const d = new Date();
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function getPasscode() {
+    return sessionStorage.getItem("lionCafeStaffPasscode") || "";
+  }
+
+  async function fetchOrders(dateStr) {
+    const url = dateStr ? `/.netlify/functions/get-orders?date=${dateStr}` : `/.netlify/functions/get-orders`;
+    const resp = await fetch(url, { headers: { "x-staff-passcode": getPasscode() } });
+    if (resp.status === 401) throw new Error("UNAUTHORIZED");
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Failed to load orders.");
+    return data.orders;
+  }
+
+  function renderGradeDashboard(allOrders) {
+    const el = document.getElementById("gradeDashboard");
+
+    // dateId -> { dayName, grade -> count }
+    const byDay = {};
+    allOrders.forEach(o => {
+      if (o.status !== "paid") return;
+      o.items.forEach(i => {
+        if (!byDay[i.dateId]) byDay[i.dateId] = { dayName: i.dayName, counts: {} };
+        const grade = i.grade || "Unspecified";
+        byDay[i.dateId].counts[grade] = (byDay[i.dateId].counts[grade] || 0) + 1;
+      });
+    });
+
+    const dayIds = Object.keys(byDay).sort();
+    if (dayIds.length === 0) {
+      el.innerHTML = `<p class="empty">No paid orders yet.</p>`;
+      return;
+    }
+
+    // Only show grade columns that actually have at least one order, in K-12 order,
+    // plus "Unspecified" at the end if present.
+    const usedGrades = new Set();
+    dayIds.forEach(d => Object.keys(byDay[d].counts).forEach(g => usedGrades.add(g)));
+    const gradeCols = GRADES.filter(g => usedGrades.has(g));
+    if (usedGrades.has("Unspecified")) gradeCols.push("Unspecified");
+
+    const rows = dayIds.map(dateId => {
+      const { dayName, counts } = byDay[dateId];
+      let rowTotal = 0;
+      const cells = gradeCols.map(g => {
+        const n = counts[g] || 0;
+        rowTotal += n;
+        return `<td class="${n === 0 ? 'zero' : ''}">${n}</td>`;
+      }).join("");
+      return `<tr><td class="dayCol">${dayName}, ${dateId}</td>${cells}<td class="totalCol">${rowTotal}</td><td><button type="button" class="print-day-btn" data-date="${dateId}">Print PDF</button></td></tr>`;
+    }).join("");
+
+    el.innerHTML = `
+      <table class="grade-dash">
+        <thead>
+          <tr>
+            <th class="dayCol">Day</th>
+            ${gradeCols.map(g => `<th title="${g}">${GRADE_SHORT[g] || g}</th>`).join("")}
+            <th class="totalCol">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function renderPrepSummary(orders) {
+    // dateId -> { dayName, counts: { item -> count } }
+    const byDay = {};
+    orders.forEach(o => {
+      if (o.status !== "paid") return;
+      o.items.forEach(i => {
+        if (!byDay[i.dateId]) byDay[i.dateId] = { dayName: i.dayName, counts: {} };
+        byDay[i.dateId].counts[i.item] = (byDay[i.dateId].counts[i.item] || 0) + 1;
+      });
+    });
+    const grid = document.getElementById("prepGrid");
+    const dayIds = Object.keys(byDay).sort();
+    if (dayIds.length === 0) {
+      const scope = dateFilter.value ? `on ${dateFilter.value}` : "in this view";
+      grid.innerHTML = `<p class="empty">No paid orders ${scope}. Try the <strong>All upcoming</strong> button if you're not sure which date to check.</p>`;
+      return;
+    }
+    grid.innerHTML = dayIds.map(dateId => {
+      const { dayName, counts } = byDay[dateId];
+      const items = Object.entries(counts).map(([item, count]) => `
+        <div class="prep-item">
+          <div class="count">${count}</div>
+          <div class="name">${item}</div>
+        </div>
+      `).join("");
+      return `
+        <div class="prep-day-group">
+          <div class="prep-day-heading">${dayName}, ${dateId}</div>
+          <div class="prep-grid">${items}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  let currentRows = [];
+
+  function renderOrderTable(orders) {
+    const wrap = document.getElementById("orderTableWrap");
+    let rows = [];
+    orders.forEach(o => {
+      o.items.forEach(i => {
+        rows.push({ ...i, parentName: o.parentName, parentEmail: o.parentEmail, status: o.status, createdAt: o.createdAt });
+      });
+    });
+    const gradeFilterEl = document.getElementById("gradeFilter");
+    if (gradeFilterEl && gradeFilterEl.value) {
+      rows = rows.filter(r => r.grade === gradeFilterEl.value);
+    }
+    rows.sort((a, b) => a.dateId.localeCompare(b.dateId) || a.childName.localeCompare(b.childName));
+    currentRows = rows;
+    if (rows.length === 0) {
+      const dayPart = dateFilter.value ? `for ${dateFilter.value}` : "in this view";
+      const gradePart = gradeFilterEl && gradeFilterEl.value ? ` and grade "${gradeFilterEl.value}"` : "";
+      wrap.innerHTML = `<p class="empty">No orders ${dayPart}${gradePart}. Try a different day, or set Grade back to "All grades".</p>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Child</th><th>Grade</th><th>Day</th><th>Item</th><th>Price</th>
+            <th>Parent</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${r.childName}</td>
+              <td>${r.grade || "—"}</td>
+              <td>${r.dayName}, ${r.dateId}</td>
+              <td>${r.item}</td>
+              <td>$${(r.amountCents / 100).toFixed(2)}</td>
+              <td>${r.parentName}<br><span style="color:var(--ink-soft);font-size:0.8rem;">${r.parentEmail}</span></td>
+              <td class="${r.status === 'paid' ? 'status-paid' : 'status-pending'}">${r.status}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  let lastDateFilteredOrders = [];
+  let lastAllOrders = [];
+
+  async function loadAndRender() {
+    document.getElementById("prepGrid").innerHTML = `<p class="loading">Loading…</p>`;
+    document.getElementById("orderTableWrap").innerHTML = `<p class="loading">Loading…</p>`;
+    document.getElementById("gradeDashboard").innerHTML = `<p class="loading">Loading…</p>`;
+    try {
+      const dateStr = dateFilter.value || null;
+      const orders = await fetchOrders(dateStr);
+      lastDateFilteredOrders = orders;
+      renderPrepSummary(orders);
+      renderOrderTable(orders);
+
+      // Grade dashboard always shows every day, independent of the date filter.
+      const allOrders = dateStr ? await fetchOrders(null) : orders;
+      lastAllOrders = allOrders;
+      renderGradeDashboard(allOrders);
+    } catch (err) {
+      if (err.message === "UNAUTHORIZED") {
+        sessionStorage.removeItem("lionCafeStaffPasscode");
+        showGate("That passcode stopped working. Try again.");
+        return;
+      }
+      document.getElementById("orderTableWrap").innerHTML = `<p class="empty">Error loading orders: ${err.message}</p>`;
+      document.getElementById("prepGrid").innerHTML = "";
+      document.getElementById("gradeDashboard").innerHTML = "";
+    }
+  }
+
+  function showGate(errorMsg) {
+    gateView.style.display = "block";
+    mainView.style.display = "none";
+    gateError.textContent = errorMsg || "";
+  }
+
+  function showMain() {
+    gateView.style.display = "none";
+    mainView.style.display = "block";
+    dateFilter.value = todayIso();
+    loadAndRender();
+  }
+
+  document.getElementById("gateSubmit").addEventListener("click", async () => {
+    const code = passcodeInput.value.trim();
+    if (!code) return;
+    sessionStorage.setItem("lionCafeStaffPasscode", code);
+    try {
+      await fetchOrders(todayIso());
+      showMain();
+    } catch (err) {
+      sessionStorage.removeItem("lionCafeStaffPasscode");
+      gateError.textContent = err.message === "UNAUTHORIZED" ? "Incorrect passcode." : `Error: ${err.message}`;
+    }
+  });
+  passcodeInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("gateSubmit").click();
+  });
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function printDayReport(dateId) {
+    const allForDay = lastAllOrders.filter(o => o.items.some(i => i.dateId === dateId));
+    const paidForDay = allForDay.filter(o => o.status === "paid");
+    if (paidForDay.length === 0) {
+      alert("No paid orders found for that day.");
+      return;
+    }
+
+    let dayName = "";
+    let totalRevenueCents = 0;
+
+    // item -> count
+    const itemCounts = {};
+    // grade -> list of { childName, parentName, item }
+    const byGrade = {};
+    paidForDay.forEach(o => {
+      o.items.forEach(i => {
+        if (i.dateId !== dateId) return;
+        dayName = i.dayName;
+        totalRevenueCents += i.amountCents;
+        itemCounts[i.item] = (itemCounts[i.item] || 0) + 1;
+        const grade = i.grade || "Unspecified";
+        if (!byGrade[grade]) byGrade[grade] = [];
+        byGrade[grade].push({ childName: i.childName, parentName: o.parentName, item: i.item });
+      });
+    });
+
+    // Pending (started checkout, never completed payment) — flagged separately so
+    // staff know these students are NOT expecting lunch and shouldn't be prepped for.
+    const pendingChildren = [];
+    allForDay.filter(o => o.status !== "paid").forEach(o => {
+      o.items.forEach(i => {
+        if (i.dateId === dateId) pendingChildren.push({ childName: i.childName, grade: i.grade || "Unspecified", parentName: o.parentName, item: i.item });
+      });
+    });
+
+    const gradeOrder = GRADES.filter(g => byGrade[g]);
+    if (byGrade["Unspecified"]) gradeOrder.push("Unspecified");
+    gradeOrder.forEach(g => byGrade[g].sort((a, b) => a.childName.localeCompare(b.childName)));
+
+    const grandTotal = gradeOrder.reduce((sum, g) => sum + byGrade[g].length, 0);
+
+    const BANDS = {
+      "K–5": ["Kindergarten", "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade"],
+      "6–8": ["6th Grade", "7th Grade", "8th Grade"],
+      "9–12": ["9th Grade", "10th Grade", "11th Grade", "12th Grade"],
+    };
+    const bandTotals = {};
+    Object.entries(BANDS).forEach(([label, grades]) => {
+      bandTotals[label] = grades.reduce((sum, g) => sum + (byGrade[g] ? byGrade[g].length : 0), 0);
+    });
+
+    const itemRows = Object.entries(itemCounts).map(([item, count]) =>
+      `<tr><td>${escapeHtml(item)}</td><td style="text-align:right;">${count}</td></tr>`
+    ).join("");
+
+    const totalsTableRows = gradeOrder.map(g =>
+      `<tr><td>${escapeHtml(g)}</td><td style="text-align:right;">${byGrade[g].length}</td></tr>`
+    ).join("");
+
+    const studentSections = gradeOrder.map((g, idx) => `
+      <div class="grade-page"${idx > 0 ? ' style="page-break-before: always;"' : ""}>
+        <h3>${escapeHtml(g)} <span class="count">(${byGrade[g].length})</span></h3>
+        <table class="students">
+          <thead><tr><th>Child</th><th>Parent</th><th>Item</th></tr></thead>
+          <tbody>
+            ${byGrade[g].map(s => `<tr><td>${escapeHtml(s.childName)}</td><td>${escapeHtml(s.parentName)}</td><td>${escapeHtml(s.item)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    `).join("");
+
+    const pendingSection = pendingChildren.length === 0 ? "" : `
+      <div style="page-break-before: always;">
+        <h2 style="border-bottom-color:#a13d3d;">Not confirmed — payment incomplete (${pendingChildren.length})</h2>
+        <p style="color:#5c6474;font-size:0.85rem;margin-top:-4px;">
+          These started an order but never finished paying — they should NOT be counted in prep above.
+        </p>
+        <table class="students">
+          <thead><tr><th>Child</th><th>Grade</th><th>Parent</th><th>Item</th></tr></thead>
+          <tbody>
+            ${pendingChildren.map(s => `<tr><td>${escapeHtml(s.childName)}</td><td>${escapeHtml(s.grade)}</td><td>${escapeHtml(s.parentName)}</td><td>${escapeHtml(s.item)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const reportHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Lion Cafe — Daily Summary — ${escapeHtml(dayName)}, ${escapeHtml(dateId)}</title>
+        <style>
+          body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #182234; margin: 32px; }
+          h1 { font-size: 1.4rem; margin-bottom: 2px; }
+          .sub { color: #5c6474; font-size: 0.9rem; margin-bottom: 16px; }
+          .stat-row { display: flex; gap: 16px; margin: 16px 0 24px; }
+          .stat { background: #f8f3e6; border-radius: 8px; padding: 10px 16px; min-width: 120px; }
+          .stat .num { font-size: 1.5rem; font-weight: bold; color: #16264a; }
+          .stat .label { font-size: 0.75rem; color: #5c6474; text-transform: uppercase; }
+          h2 { font-size: 1.05rem; border-bottom: 2px solid #16264a; padding-bottom: 4px; margin-top: 28px; }
+          h3 { font-size: 0.95rem; margin-top: 20px; margin-bottom: 6px; }
+          h3 .count { color: #5c6474; font-weight: normal; font-size: 0.85rem; }
+          table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 6px; }
+          th { text-align: left; padding: 5px 6px; border-bottom: 1px solid #999; font-size: 0.75rem; text-transform: uppercase; color: #5c6474; }
+          td { padding: 4px 6px; border-bottom: 1px solid #ddd; }
+          table.totals td:last-child, table.totals th:last-child { text-align: right; }
+          .grand-total { font-weight: bold; border-top: 2px solid #16264a; }
+          @media print { button { display: none; } }
+        </style>
+      </head>
+      <body>
+        <button onclick="window.print()" style="margin-bottom:16px;padding:8px 16px;">Print / Save as PDF</button>
+        <h1>Lion Cafe — Daily Summary</h1>
+        <div class="sub">${escapeHtml(dayName)}, ${escapeHtml(dateId)} · Generated ${new Date().toLocaleString()}</div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="num">${grandTotal}</div><div class="label">Paid orders</div></div>
+          <div class="stat"><div class="num">$${(totalRevenueCents / 100).toFixed(2)}</div><div class="label">Revenue</div></div>
+          <div class="stat"><div class="num">${gradeOrder.length}</div><div class="label">Grades ordering</div></div>
+          ${pendingChildren.length > 0 ? `<div class="stat" style="background:#fcebeb;"><div class="num" style="color:#a13d3d;">${pendingChildren.length}</div><div class="label" style="color:#a13d3d;">Unpaid / incomplete</div></div>` : ""}
+        </div>
+
+        <h2>Totals by grade band</h2>
+        <div class="stat-row">
+          <div class="stat"><div class="num">${bandTotals["K–5"]}</div><div class="label">K–5 lunches</div></div>
+          <div class="stat"><div class="num">${bandTotals["6–8"]}</div><div class="label">6–8 lunches</div></div>
+          <div class="stat"><div class="num">${bandTotals["9–12"]}</div><div class="label">9–12 lunches</div></div>
+        </div>
+
+        <h2>Items needed (kitchen prep)</h2>
+        <table class="totals">
+          <thead><tr><th>Item</th><th>Count</th></tr></thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+
+        <h2>Totals by grade</h2>
+        <table class="totals">
+          <thead><tr><th>Grade</th><th>Orders</th></tr></thead>
+          <tbody>
+            ${totalsTableRows}
+            <tr class="grand-total"><td>Total</td><td style="text-align:right;">${grandTotal}</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Students by grade</h2>
+        ${studentSections}
+
+        ${pendingSection}
+      </body>
+      </html>
+    `;
+
+    const win = window.open("", "_blank");
+    if (!win) {
+      alert("Your browser blocked the print window. Please allow pop-ups for this site and try again.");
+      return;
+    }
+    win.document.write(reportHtml);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  }
+
+  document.getElementById("gradeDashboard").addEventListener("click", e => {
+    const btn = e.target.closest(".print-day-btn");
+    if (!btn) return;
+    printDayReport(btn.getAttribute("data-date"));
+  });
+
+  document.getElementById("printSummaryBtn").addEventListener("click", () => {
+    if (!dateFilter.value) {
+      alert("Pick a specific day above first (a daily summary needs one exact date) — \"All upcoming\" won't work here.");
+      return;
+    }
+    printDayReport(dateFilter.value);
+  });
+
+  function csvEscape(val) {
+    const s = String(val == null ? "" : val);
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  }
+
+  function downloadCsv(rows, filename) {
+    const header = ["Child", "Grade", "Day", "Date", "Item", "Price", "Parent Name", "Parent Email", "Status", "Order Created At"];
+    const lines = [header.map(csvEscape).join(",")];
+    rows.forEach(r => {
+      lines.push([
+        r.childName, r.grade || "", r.dayName, r.dateId, r.item,
+        `$${(r.amountCents / 100).toFixed(2)}`, r.parentName, r.parentEmail, r.status, r.createdAt,
+      ].map(csvEscape).join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    if (currentRows.length === 0) {
+      alert("Nothing to export for this view.");
+      return;
+    }
+    const dayLabel = dateFilter.value || "all-upcoming";
+    const gradeLabel = document.getElementById("gradeFilter").value;
+    const filename = gradeLabel
+      ? `lion-cafe-orders-${dayLabel}-${gradeLabel.replace(/\s+/g, "-")}.csv`
+      : `lion-cafe-orders-${dayLabel}.csv`;
+    downloadCsv(currentRows, filename);
+  });
+
+  document.getElementById("todayBtn").addEventListener("click", () => {
+    dateFilter.value = todayIso();
+    loadAndRender();
+  });
+  document.getElementById("allBtn").addEventListener("click", () => {
+    dateFilter.value = "";
+    loadAndRender();
+  });
+  document.getElementById("refreshBtn").addEventListener("click", loadAndRender);
+  dateFilter.addEventListener("change", loadAndRender);
+
+  const gradeFilter = document.getElementById("gradeFilter");
+  GRADES.forEach(g => {
+    const opt = document.createElement("option");
+    opt.value = g;
+    opt.textContent = g;
+    gradeFilter.appendChild(opt);
+  });
+  gradeFilter.addEventListener("change", () => {
+    // Just re-filter the already-fetched data — no need to hit the network again.
+    renderOrderTable(lastDateFilteredOrders);
+  });
+
+  // If a passcode is already stored this session, skip the gate.
+  if (getPasscode()) {
+    showMain();
+  }
+</script>
+
+</body>
+</html>

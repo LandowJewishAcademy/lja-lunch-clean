@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LJA Daily Lunch Order Form</title>
+<style>
+  :root {
+    --navy: #16264a;
+    --navy-deep: #0c1830;
+    --gold: #c99a4a;
+    --gold-light: #e6c98a;
+    --gold-deep: #a57930;
+    --cream: #f8f3e6;
+    --paper: #fffdf8;
+    --ink: #182234;
+    --ink-soft: #5c6474;
+    --line: #ddd0a8;
+    --green: #3f6b4f;
+    --red: #a13d3d;
+    --closed-bg: #f1ecdb;
+    --radius: 10px;
+    --serif: Georgia, "Times New Roman", Cambria, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+
+  header.brand {
+    background: var(--paper);
+    color: var(--navy);
+    padding: 40px 20px 26px;
+    text-align: center;
+    border-bottom: 1px solid var(--gold);
+    box-shadow: 0 1px 0 var(--navy);
+  }
+
+  header.brand img.crest {
+    width: 92px;
+    height: auto;
+    margin-bottom: 6px;
+  }
+
+  header.brand .wordmark {
+    margin: 4px 0 0;
+    font-family: var(--serif);
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--navy);
+    line-height: 1;
+  }
+
+  header.brand .tagline {
+    margin: 6px 0 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    color: var(--gold-deep);
+    font-size: 1.1rem;
+    letter-spacing: 0.01em;
+  }
+
+  nav.subnav {
+    background: var(--navy);
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+  }
+  nav.subnav a {
+    color: var(--gold-light);
+    text-decoration: none;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    border-radius: 999px;
+    transition: background 0.15s, color 0.15s;
+    font-family: var(--sans);
+    font-weight: 600;
+  }
+  nav.subnav a:hover { background: rgba(230,201,138,0.15); color: #fff; }
+
+  .rule-banner {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-top: 22px;
+    font-size: 0.88rem;
+    color: var(--navy);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .rule-banner .icon { font-size: 1.05rem; line-height: 1.3; }
+  .rule-banner strong { display: block; margin-bottom: 2px; }
+
+  .lookup-section { border: 1.5px dashed var(--gold); background: #fdf9ef; }
+  .lookup-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .lookup-row input {
+    flex: 1;
+    min-width: 180px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+  }
+  .lookup-row button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 7px;
+    background: var(--navy);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .lookup-row button:hover { background: var(--navy-deep); }
+  .lookup-row button:disabled { background: #b9b9b9; cursor: not-allowed; }
+
+  .lookup-result-card {
+    margin-top: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: var(--paper);
+  }
+  .lookup-result-card .lr-child { font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .lookup-result-day {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    padding: 4px 0;
+    border-top: 1px dashed var(--line);
+  }
+  .lookup-result-day:first-of-type { border-top: none; }
+  .lookup-status-paid { color: var(--green); font-weight: 600; }
+  .lookup-status-pending { color: var(--red); font-weight: 600; }
+  .lookup-empty { color: var(--ink-soft); font-size: 0.88rem; margin-top: 12px; font-style: italic; }
+
+  section {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-top: 22px;
+    padding: 22px 22px 24px;
+    box-shadow: 0 1px 2px rgba(28,52,82,0.04);
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 14px;
+    color: var(--navy);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  h2 .tag {
+    font-family: var(--sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--gold-deep);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Menu board — the weekly menu presented as a posted dining-hall board */
+  .menu-board {
+    background: var(--navy);
+    border: none;
+    padding: 26px 24px 22px;
+  }
+  .menu-board h2 { color: var(--gold-light); }
+  .menu-board h2 .tag { color: var(--gold); }
+  table.menu {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.94rem;
+  }
+  table.menu th {
+    text-align: left;
+    color: var(--gold);
+    font-family: var(--sans);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0 10px 10px;
+    border-bottom: 1px solid rgba(230,201,138,0.3);
+  }
+  table.menu td {
+    padding: 11px 10px;
+    border-bottom: 1px solid rgba(230,201,138,0.16);
+    color: #f2ead2;
+  }
+  table.menu tr:last-child td { border-bottom: none; }
+  table.menu td.day {
+    font-family: var(--serif);
+    font-weight: 700;
+    color: var(--gold-light);
+    width: 100px;
+    font-size: 1rem;
+  }
+  table.menu td.price {
+    text-align: right;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  /* On-Demand notice */
+  .ondemand-restriction {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .ondemand-restriction .icon { font-size: 1.3rem; line-height: 1.2; }
+  .ondemand-restriction strong {
+    display: block;
+    color: var(--gold-light);
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    margin-bottom: 3px;
+  }
+  .ondemand-restriction p { margin: 0; font-size: 0.9rem; color: #e7e2d2; }
+
+  .ondemand-grades-badge {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--navy-deep);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-left: 8px;
+  }
+
+  table.ondemand {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.94rem;
+  }
+  table.ondemand td {
+    padding: 10px 6px;
+    border-bottom: 1px dashed var(--line);
+  }
+  table.ondemand tr:last-child td { border-bottom: none; }
+  table.ondemand td.item { color: var(--ink); }
+  table.ondemand td.item .hs-tag {
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--gold-deep);
+    letter-spacing: 0.05em;
+    margin-left: 6px;
+  }
+  table.ondemand td.price {
+    text-align: right;
+    font-weight: 600;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .ondemand-payment-note {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .ondemand-payment-note strong { color: var(--navy); }
+
+  .ondemand-caption {
+    font-family: var(--serif);
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 1rem;
+    margin: 0 0 4px;
+  }
+  .ondemand-caption .hs-tag {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Kid cards */
+  .kid-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 16px 14px;
+    margin-bottom: 16px;
+    position: relative;
+    background: #fdfcf8;
+  }
+  .kid-card-head {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 150px;
+  }
+  .field label {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .field input, .field select {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: #fff;
+    color: var(--ink);
+  }
+  .field input:focus, .field select:focus {
+    outline: 2px solid var(--gold);
+    outline-offset: 1px;
+  }
+  .field input.field-error,
+  .field select.field-error {
+    border-color: var(--red);
+  }
+
+  .remove-kid {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .remove-kid:hover { color: var(--red); }
+
+  .days-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .day-check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px 10px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .day-check:hover { border-color: var(--gold); }
+  .day-check.checked {
+    border-color: var(--gold);
+    background: #fdf6e5;
+  }
+  .day-check.closed {
+    background: var(--closed-bg);
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+  .day-check.closed:hover { border-color: var(--line); }
+  .day-check input { accent-color: var(--gold); width: 16px; height: 16px; flex-shrink: 0; }
+  .day-check .dtext { flex: 1; min-width: 0; }
+  .day-check .dname { font-weight: 600; color: var(--navy); display: block; }
+  .day-check .ditem { color: var(--ink-soft); font-size: 0.78rem; }
+  .day-check .ddeadline { font-size: 0.72rem; margin-top: 2px; }
+  .day-check .ddeadline.open { color: var(--green); }
+  .day-check .ddeadline.closed { color: var(--red); }
+  .day-check .dprice { color: var(--ink-soft); font-variant-numeric: tabular-nums; font-size: 0.82rem; white-space: nowrap; }
+
+  .kid-subtotal {
+    text-align: right;
+    margin-top: 10px;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+  }
+  .kid-subtotal strong { color: var(--navy); font-variant-numeric: tabular-nums; }
+
+  .add-kid {
+    width: 100%;
+    padding: 12px;
+    border: 1.5px dashed var(--gold);
+    border-radius: var(--radius);
+    background: #fdf9ef;
+    color: var(--navy);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .add-kid:hover { background: #fbf1d9; }
+
+  /* Summary */
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    border-bottom: 1px dashed var(--line);
+  }
+  .summary-row:last-of-type { border-bottom: none; }
+  .summary-row span.name { color: var(--ink); }
+  .summary-total {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 2px solid var(--navy);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .summary-total span.amt { font-variant-numeric: tabular-nums; }
+  .empty-note {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Parent info */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 500px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  /* Pay button */
+  .pay-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--navy);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.15s;
+  }
+  .pay-btn:hover { background: var(--navy-deep); }
+  .pay-btn:disabled {
+    background: #b9b9b9;
+    cursor: not-allowed;
+  }
+
+  .pay-note {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .square-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+    justify-content: center;
+    margin-top: 4px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--navy);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    max-width: 90%;
+    text-align: center;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<header class="brand">
+  <img class="crest" src="assets/lion-logo.jpg" alt="Landow Jewish Academy lion crest">
+  <div class="wordmark">Lion Cafe</div>
+  <div class="tagline">at Landow Jewish Academy</div>
+</header>
+
+<nav class="subnav">
+  <a href="#lookup">Did I Order?</a>
+  <a href="#menu">Weekly Menu</a>
+  <a href="#order">Order Lunch</a>
+  <a href="#payment">Payment</a>
+  <a href="#ondemand">On-Demand</a>
+</nav>
+
+<div class="wrap">
+
+  <div class="rule-banner">
+    <span class="icon">⏰</span>
+    <div>
+      <strong id="windowRangeLabel">Ordering week: Monday, August 17 – Friday, August 21</strong>
+      Order each lunch by 5:00 PM the day before. After that time, that day is closed. A new week opens automatically every Saturday at 10:00 PM.
+    </div>
+  </div>
+
+  <section id="lookup" class="lookup-section">
+    <h2>Did I already order? <span class="tag">Look up by phone number</span></h2>
+    <p style="margin-top:-6px; color:var(--ink-soft); font-size:0.88rem;">
+      Not sure if you already placed an order? Enter the phone number you used and we'll show you.
+    </p>
+    <div class="lookup-row">
+      <input type="tel" id="lookupPhone" placeholder="(555) 123-4567">
+      <button type="button" id="lookupBtn">Check my orders</button>
+    </div>
+    <div id="lookupResults"></div>
+  </section>
+
+  <section id="menu" class="menu-board">
+    <h2>This Week at the Cafe <span class="tag">$7.50–$8.00 per lunch · online order</span></h2>
+    <table class="menu">
+      <thead>
+        <tr><th>Day</th><th>Menu</th><th style="text-align:right;">Price</th></tr>
+      </thead>
+      <tbody id="menuTableBody"></tbody>
+    </table>
+  </section>
+
+  <section id="order">
+    <h2>Parent / Guardian Information</h2>
+    <div class="two-col">
+      <div class="field">
+        <label for="parentName">Your name <span style="color:var(--red);">*</span></label>
+        <input type="text" id="parentName" placeholder="Jane Cohen" required>
+      </div>
+      <div class="field">
+        <label for="parentEmail">Email <span style="color:var(--red);">*</span></label>
+        <input type="email" id="parentEmail" placeholder="jane@email.com" required>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px;">
+      <label for="parentPhone">Phone number <span style="color:var(--red);">*</span></label>
+      <input type="tel" id="parentPhone" placeholder="(555) 123-4567" required>
+    </div>
+    <p style="margin-top:8px; margin-bottom:0; color:var(--ink-soft); font-size:0.82rem;">
+      We ask for your phone number so you can look up past orders below without needing to check your email.
+    </p>
+  </section>
+
+  <section>
+    <h2>Children</h2>
+    <p style="margin-top:-6px; color:var(--ink-soft); font-size:0.88rem;">
+      Select the lunch days you'd like for each child. Greyed-out days are closed because the 5:00 PM order deadline has passed.
+    </p>
+    <div id="kidsContainer"></div>
+    <button class="add-kid" id="addKidBtn" type="button">+ Add a child</button>
+  </section>
+
+  <section>
+    <h2>Order Summary</h2>
+    <div id="summaryList"><p class="empty-note">Add a child above to see their order here.</p></div>
+    <div class="summary-total">
+      <span>Total due now</span>
+      <span class="amt" id="grandTotal">$0.00</span>
+    </div>
+  </section>
+
+  <section id="payment">
+    <h2>Payment</h2>
+    <button class="pay-btn" id="payBtn" type="button" disabled>Proceed to Payment — $0.00</button>
+    <div class="square-badge">🔒 Payments processed securely via Square</div>
+    <p class="pay-note">You'll be taken to a secure Square checkout page to pay for the selected days above.</p>
+  </section>
+
+  <section id="ondemand">
+    <h2>Lion Cafe On-Demand <span class="tag">Grades 6–12 · While Supplies Last</span></h2>
+
+    <div class="ondemand-restriction">
+      <span class="icon">🚫</span>
+      <div>
+        <strong>Not available to Kindergarten – 5th grade students.</strong>
+        <p>On-Demand is an in-person, walk-up menu for Grades 6–12 only. Younger students should order from the weekly lunch menu above.</p>
+      </div>
+    </div>
+
+    <p class="ondemand-caption">Everyday On-Demand <span class="hs-tag">(as supplies last)</span></p>
+    <table class="ondemand">
+      <tbody>
+        <tr><td class="item">Bagels and cream cheese <span class="hs-tag">Non-meat days only</span></td><td class="price">$5</td></tr>
+        <tr><td class="item">Sushi <span class="hs-tag">HS only</span></td><td class="price">$12</td></tr>
+        <tr><td class="item">Salads <span class="hs-tag">HS only</span></td><td class="price">$12</td></tr>
+        <tr><td class="item">Pretzels</td><td class="price">$5</td></tr>
+        <tr><td class="item">Grilled cheese <span class="hs-tag">Non-meat days only</span></td><td class="price">$5</td></tr>
+        <tr><td class="item">Pancakes</td><td class="price">$5</td></tr>
+        <tr><td class="item">Snacks and chips</td><td class="price">Priced individually</td></tr>
+      </tbody>
+    </table>
+
+    <div class="ondemand-payment-note">
+      <span>💳</span>
+      <p><strong>On-Demand items are not part of this online order form.</strong> They're purchased directly at the Cafe with cash or card at the time of pickup.</p>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const MENU_BY_WEEKDAY = {
+    1: { day: "Monday",    item: "Hot dog & onion rings",   price: 8.00 },
+    2: { day: "Tuesday",   item: "Two slices of pizza",     price: 7.50 },
+    3: { day: "Wednesday", item: "Burger & fries",          price: 8.00 },
+    4: { day: "Thursday",  item: "Chicken nuggets & fries", price: 8.00 },
+    5: { day: "Friday",    item: "Two slices of pizza",     price: 7.50 },
+  };
+
+  const GRADES = ["Kindergarten","1st Grade","2nd Grade","3rd Grade","4th Grade","5th Grade",
+    "6th Grade","7th Grade","8th Grade","9th Grade","10th Grade","11th Grade","12th Grade"];
+
+  const DEADLINE_HOUR = 17; // 5:00 PM, the calendar day before each lunch day
+
+  // ---- 2026-2027 school year bounds ----
+  const SCHOOL_YEAR_START = new Date(2026, 7, 17); // Mon, Aug 17, 2026 — first day (K-12)
+  const SCHOOL_YEAR_END   = new Date(2027, 5, 2);  // Tue, Jun 2, 2027 — last day of school
+
+  const dateFmt = d => d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  const timeFmt = d => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const isoDate = d => d.toISOString().slice(0, 10);
+  const fmt = n => "$" + n.toFixed(2);
+
+  // ---- Days with no school, from the 2026-2027 LJA calendar ----
+  // Only days actually marked "no school" are listed here. Early-dismissal
+  // and special/note days (e.g. Erev Rosh Hashana, Tzom Gedaliah, Ta'anit
+  // Esther, President's Day, Yom Hashoah/Hazikaron/Ha'atzmaut, Lag B'Omer)
+  // are treated as normal school days per instructions and are NOT excluded.
+  const OFF_DATES = new Set();
+  function addOffRange(y1, m1, d1, y2, m2, d2) {
+    let cur = new Date(y1, m1 - 1, d1);
+    const end = new Date(y2, m2 - 1, d2);
+    while (cur <= end) {
+      OFF_DATES.add(isoDate(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  addOffRange(2026, 8, 5, 2026, 8, 5);     // Staff Reports (no students)
+  addOffRange(2026, 8, 13, 2026, 8, 13);   // Orientation only (before first day)
+  addOffRange(2026, 9, 21, 2026, 9, 21);   // Yom Kippur
+  addOffRange(2026, 9, 25, 2026, 10, 2);   // Sukkot Break (through "continues")
+  addOffRange(2026, 11, 26, 2026, 11, 27); // Thanksgiving
+  addOffRange(2026, 12, 7, 2026, 12, 7);   // Chanukah Break
+  addOffRange(2026, 12, 25, 2026, 12, 25); // Federal Holiday
+  addOffRange(2027, 1, 21, 2027, 1, 31);   // Winter Break
+  addOffRange(2027, 3, 23, 2027, 3, 23);   // Purim
+  addOffRange(2027, 4, 19, 2027, 4, 30);   // Pesach Break
+  addOffRange(2027, 5, 31, 2027, 5, 31);   // Memorial Day
+
+  // A new ordering week opens automatically every Saturday at 10:00 PM,
+  // showing the following Monday-Friday. Before that Saturday-10pm mark,
+  // the currently-open week (the previous rollover's week) still shows.
+  function computeOrderingWeek(now) {
+    const dow = now.getDay(); // 0=Sun ... 6=Sat
+    const daysSinceSaturday = (dow - 6 + 7) % 7;
+    const thisSaturday = new Date(now);
+    thisSaturday.setHours(0, 0, 0, 0);
+    thisSaturday.setDate(thisSaturday.getDate() - daysSinceSaturday);
+    const rollover = new Date(thisSaturday);
+    rollover.setHours(22, 0, 0, 0);
+
+    const qualifyingSaturday = new Date(thisSaturday);
+    if (now < rollover) qualifyingSaturday.setDate(qualifyingSaturday.getDate() - 7);
+
+    const monday = new Date(qualifyingSaturday);
+    monday.setDate(monday.getDate() + 2);
+    const friday = new Date(monday);
+    friday.setDate(friday.getDate() + 4);
+    return { start: monday, end: friday };
+  }
+
+  let WINDOW_START, WINDOW_END, SEASON_ENDED;
+
+  function refreshOrderingWindow() {
+    const wk = computeOrderingWeek(new Date());
+    if (wk.start < SCHOOL_YEAR_START) {
+      WINDOW_START = new Date(SCHOOL_YEAR_START);
+      WINDOW_END = new Date(SCHOOL_YEAR_START);
+      WINDOW_END.setDate(WINDOW_END.getDate() + 4);
+      SEASON_ENDED = false;
+    } else if (wk.start > SCHOOL_YEAR_END) {
+      SEASON_ENDED = true;
+      WINDOW_START = new Date(SCHOOL_YEAR_END.getTime() + 86400000);
+      WINDOW_END = new Date(SCHOOL_YEAR_END);
+    } else {
+      WINDOW_START = wk.start;
+      WINDOW_END = wk.end > SCHOOL_YEAR_END ? new Date(SCHOOL_YEAR_END) : wk.end;
+      SEASON_ENDED = false;
+    }
+  }
+
+  // Every weekday (Mon-Fri) between two dates.
+  function candidateWeekdays(start, end) {
+    const out = [];
+    let cursor = new Date(start);
+    cursor.setHours(0, 0, 0, 0);
+    const stop = new Date(end);
+    stop.setHours(0, 0, 0, 0);
+    while (cursor <= stop) {
+      const dow = cursor.getDay();
+      if (MENU_BY_WEEKDAY[dow]) out.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return out;
+  }
+
+  function isDayOpen(d) {
+    return new Date() < d.deadline;
+  }
+
+  // Build the final list of orderable days: weekdays in the current
+  // automatic window, minus holidays/no-school days, each with its menu
+  // item, price, and deadline (day before at 5:00 PM). Openness is checked
+  // live, not baked in here, so a day can flip to closed while the page
+  // stays open.
+  function buildUpcomingDays() {
+    const days = [];
+    candidateWeekdays(WINDOW_START, WINDOW_END).forEach(lunchDate => {
+      const id = isoDate(lunchDate);
+      if (OFF_DATES.has(id)) return;
+      const menu = MENU_BY_WEEKDAY[lunchDate.getDay()];
+      const deadline = new Date(lunchDate);
+      deadline.setDate(deadline.getDate() - 1);
+      deadline.setHours(DEADLINE_HOUR, 0, 0, 0);
+      days.push({
+        id,
+        date: lunchDate,
+        dayName: menu.day,
+        item: menu.item,
+        price: menu.price,
+        deadline,
+      });
+    });
+    return days;
+  }
+
+  refreshOrderingWindow();
+  let UPCOMING_DAYS = buildUpcomingDays();
+
+  function updateWindowLabel() {
+    const label = document.getElementById("windowRangeLabel");
+    if (SEASON_ENDED) {
+      label.textContent = "The 2026–2027 lunch ordering season has ended.";
+    } else {
+      label.textContent = `Ordering week: ${dateFmt(WINDOW_START)} – ${dateFmt(WINDOW_END)}`;
+    }
+  }
+
+  let kidCount = 0;
+  const kids = {}; // id -> {name, grade, selected: {dayId: bool}}
+
+  function renderMenuTable() {
+    const tbody = document.getElementById("menuTableBody");
+    tbody.innerHTML = Object.values(MENU_BY_WEEKDAY).map(m =>
+      `<tr><td class="day">${m.day}</td><td>${m.item}</td><td class="price">${fmt(m.price)}</td></tr>`
+    ).join("");
+  }
+
+  function dayGridHtml(id) {
+    const openDays = UPCOMING_DAYS.filter(isDayOpen);
+    if (openDays.length === 0) {
+      return `<p class="empty-note">No lunch days are currently open for ordering.</p>`;
+    }
+    return openDays.map(d => `
+      <label class="day-check" data-id="${id}" data-day="${d.id}">
+        <input type="checkbox" data-id="${id}" data-day="${d.id}" ${kids[id].selected[d.id] ? "checked" : ""}>
+        <span class="dtext">
+          <span class="dname">${d.dayName}, ${dateFmt(d.date)}</span>
+          <span class="ditem">${d.item}</span>
+          <span class="ddeadline open">Order by ${dateFmt(d.deadline)} ${timeFmt(d.deadline)}</span>
+        </span>
+        <span class="dprice">${fmt(d.price)}</span>
+      </label>
+    `).join("");
+  }
+
+  function wireDayCheckboxes(card, id) {
+    card.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener("change", e => {
+        const dayId = e.target.getAttribute("data-day");
+        kids[id].selected[dayId] = e.target.checked;
+        e.target.closest(".day-check").classList.toggle("checked", e.target.checked);
+        renderSummary();
+      });
+    });
+  }
+
+  // Rebuild every existing kid card's day-grid against the current
+  // UPCOMING_DAYS (used after staff applies a new window / off-days).
+  // Names and grades are preserved; day selections carry over only for
+  // dates that still exist and are still open.
+  function rerenderAllDayGrids() {
+    Object.keys(kids).forEach(id => {
+      const oldSelected = kids[id].selected;
+      kids[id].selected = {};
+      UPCOMING_DAYS.forEach(d => {
+        kids[id].selected[d.id] = !!(oldSelected[d.id] && isDayOpen(d));
+      });
+      const card = document.getElementById(id);
+      if (!card) return;
+      const grid = card.querySelector(".days-grid");
+      grid.innerHTML = dayGridHtml(id);
+      wireDayCheckboxes(card, id);
+      UPCOMING_DAYS.filter(isDayOpen).forEach(d => {
+        if (kids[id].selected[d.id]) {
+          const row = card.querySelector(`.day-check[data-day="${d.id}"]`);
+          if (row) row.classList.add("checked");
+        }
+      });
+    });
+    renderSummary();
+  }
+
+  function addKid() {
+    kidCount += 1;
+    const id = "kid" + kidCount;
+    kids[id] = { name: "", grade: "", selected: {} };
+    UPCOMING_DAYS.forEach(d => kids[id].selected[d.id] = false);
+
+    const card = document.createElement("div");
+    card.className = "kid-card";
+    card.id = id;
+    card.innerHTML = `
+      <button type="button" class="remove-kid" data-id="${id}">Remove</button>
+      <div class="kid-card-head">
+        <div class="field">
+          <label>Child's name <span style="color:var(--red);">*</span></label>
+          <input type="text" data-id="${id}" data-role="name" placeholder="Child's name" required>
+        </div>
+        <div class="field">
+          <label>Grade <span style="color:var(--red);">*</span></label>
+          <select data-id="${id}" data-role="grade" required>
+            <option value="" disabled selected>Select grade</option>
+            ${GRADES.map(g => `<option value="${g}">${g}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>Which lunch days would you like for this child?</label>
+      </div>
+      <div class="days-grid">${dayGridHtml(id)}</div>
+      <div class="kid-subtotal">Subtotal: <strong id="${id}-subtotal">$0.00</strong></div>
+    `;
+    document.getElementById("kidsContainer").appendChild(card);
+
+    card.querySelector('[data-role="name"]').addEventListener("input", e => {
+      kids[id].name = e.target.value;
+      e.target.classList.remove("field-error");
+      renderSummary();
+    });
+    card.querySelector('[data-role="grade"]').addEventListener("change", e => {
+      kids[id].grade = e.target.value;
+      e.target.classList.remove("field-error");
+      renderSummary();
+    });
+    wireDayCheckboxes(card, id);
+    card.querySelector(".remove-kid").addEventListener("click", () => {
+      delete kids[id];
+      card.remove();
+      renderSummary();
+    });
+
+    renderSummary();
+  }
+
+  function kidTotal(id) {
+    const k = kids[id];
+    let total = 0;
+    UPCOMING_DAYS.forEach(d => { if (k.selected[d.id] && isDayOpen(d)) total += d.price; });
+    return total;
+  }
+
+  function renderSummary() {
+    const summaryList = document.getElementById("summaryList");
+    const ids = Object.keys(kids);
+    let grand = 0;
+
+    if (ids.length === 0) {
+      summaryList.innerHTML = `<p class="empty-note">Add a child above to see their order here.</p>`;
+    } else {
+      let rows = "";
+      ids.forEach(id => {
+        const k = kids[id];
+        const total = kidTotal(id);
+        grand += total;
+        const subtotalEl = document.getElementById(id + "-subtotal");
+        if (subtotalEl) subtotalEl.textContent = fmt(total);
+
+        const dayCount = UPCOMING_DAYS.filter(d => k.selected[d.id] && isDayOpen(d)).length;
+        const label = (k.name || "Unnamed child") + (k.grade ? " — " + k.grade : "");
+        rows += `<div class="summary-row"><span class="name">${label} (${dayCount} lunch${dayCount === 1 ? "" : "es"})</span><span>${fmt(total)}</span></div>`;
+      });
+      summaryList.innerHTML = rows;
+    }
+
+    document.getElementById("grandTotal").textContent = fmt(grand);
+    const payBtn = document.getElementById("payBtn");
+    payBtn.textContent = `Proceed to Payment — ${fmt(grand)}`;
+    payBtn.disabled = grand <= 0;
+  }
+
+  function buildLineItemsForCheckout() {
+    const items = [];
+    Object.keys(kids).forEach(id => {
+      const k = kids[id];
+      UPCOMING_DAYS.forEach(d => {
+        if (k.selected[d.id] && isDayOpen(d)) {
+          items.push({
+            dateId: d.id,
+            childName: k.name || "Child",
+            grade: k.grade || "",
+            amountCents: Math.round(d.price * 100),
+          });
+        }
+      });
+    });
+    return items;
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3200);
+  }
+
+  document.getElementById("addKidBtn").addEventListener("click", addKid);
+
+  function digitsOnly(s) {
+    return (s || "").replace(/\D/g, "");
+  }
+
+  document.getElementById("parentName").addEventListener("input", e => {
+    e.target.classList.remove("field-error");
+  });
+  document.getElementById("parentEmail").addEventListener("input", e => {
+    e.target.classList.remove("field-error");
+  });
+  document.getElementById("parentPhone").addEventListener("input", e => {
+    e.target.classList.remove("field-error");
+  });
+
+  document.getElementById("payBtn").addEventListener("click", async () => {
+    const payBtn = document.getElementById("payBtn");
+    const nameInput = document.getElementById("parentName");
+    const emailInput = document.getElementById("parentEmail");
+    const phoneInput = document.getElementById("parentPhone");
+    const parentName = nameInput.value.trim();
+    const parentEmail = emailInput.value.trim();
+    const parentPhone = phoneInput.value.trim();
+    const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail);
+    const phoneDigits = digitsOnly(parentPhone);
+    const phoneLooksValid = phoneDigits.length >= 10;
+
+    nameInput.classList.toggle("field-error", !parentName);
+    emailInput.classList.toggle("field-error", !parentEmail || !emailLooksValid);
+    phoneInput.classList.toggle("field-error", !parentPhone || !phoneLooksValid);
+
+    if (!parentName || !parentEmail || !parentPhone) {
+      showToast("Please enter your name, email, and phone number before paying.");
+      (!parentName ? nameInput : !parentEmail ? emailInput : phoneInput).focus();
+      return;
+    }
+    if (!emailLooksValid) {
+      showToast("Please enter a valid email address.");
+      emailInput.focus();
+      return;
+    }
+    if (!phoneLooksValid) {
+      showToast("Please enter a valid phone number (at least 10 digits).");
+      phoneInput.focus();
+      return;
+    }
+
+    // Require name + grade for any child that has at least one lunch selected.
+    let firstInvalidField = null;
+    for (const id of Object.keys(kids)) {
+      const k = kids[id];
+      const hasOrder = UPCOMING_DAYS.some(d => k.selected[d.id] && isDayOpen(d));
+      if (!hasOrder) continue;
+
+      const card = document.getElementById(id);
+      const nameEl = card.querySelector('[data-role="name"]');
+      const gradeEl = card.querySelector('[data-role="grade"]');
+      const nameMissing = !k.name.trim();
+      const gradeMissing = !k.grade;
+
+      nameEl.classList.toggle("field-error", nameMissing);
+      gradeEl.classList.toggle("field-error", gradeMissing);
+
+      if ((nameMissing || gradeMissing) && !firstInvalidField) {
+        firstInvalidField = nameMissing ? nameEl : gradeEl;
+      }
+    }
+    if (firstInvalidField) {
+      showToast("Please enter each child's name and grade before paying.");
+      firstInvalidField.focus();
+      firstInvalidField.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    const lineItems = buildLineItemsForCheckout();
+    if (lineItems.length === 0) {
+      showToast("Select at least one open lunch day before paying.");
+      return;
+    }
+
+    const originalLabel = payBtn.textContent;
+    payBtn.disabled = true;
+    payBtn.textContent = "Redirecting to secure payment…";
+
+    try {
+      const res = await fetch("/.netlify/functions/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentName, parentEmail, parentPhone, lineItems }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.checkoutUrl) {
+        const message = typeof data.error === "string" ? data.error : "Could not start checkout.";
+        throw new Error(message);
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      showToast(err.message || "Something went wrong starting payment.");
+      payBtn.disabled = false;
+      payBtn.textContent = originalLabel;
+    }
+  });
+
+  document.getElementById("lookupBtn").addEventListener("click", async () => {
+    const lookupBtn = document.getElementById("lookupBtn");
+    const phoneInput = document.getElementById("lookupPhone");
+    const resultsEl = document.getElementById("lookupResults");
+    const digits = digitsOnly(phoneInput.value);
+
+    if (digits.length < 10) {
+      resultsEl.innerHTML = `<p class="lookup-empty">Enter a full phone number (at least 10 digits) to check.</p>`;
+      phoneInput.focus();
+      return;
+    }
+
+    const originalLabel = lookupBtn.textContent;
+    lookupBtn.disabled = true;
+    lookupBtn.textContent = "Checking…";
+    resultsEl.innerHTML = `<p class="lookup-empty">Checking…</p>`;
+
+    try {
+      const res = await fetch(`/.netlify/functions/check-orders?phone=${encodeURIComponent(digits)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not check orders.");
+
+      if (!data.orders || data.orders.length === 0) {
+        resultsEl.innerHTML = `<p class="lookup-empty">No upcoming orders found for that phone number. If you'd like to order, use the form below.</p>`;
+        return;
+      }
+
+      // Group items by child name for a clean display.
+      const byChild = {};
+      data.orders.forEach(o => {
+        o.items.forEach(i => {
+          if (!byChild[i.childName]) byChild[i.childName] = { grade: i.grade, days: [] };
+          byChild[i.childName].days.push({ dayName: i.dayName, dateId: i.dateId, item: i.item, status: o.status });
+        });
+      });
+
+      resultsEl.innerHTML = Object.entries(byChild).map(([childName, info]) => `
+        <div class="lookup-result-card">
+          <div class="lr-child">${childName}${info.grade ? " — " + info.grade : ""}</div>
+          ${info.days
+            .sort((a, b) => a.dateId.localeCompare(b.dateId))
+            .map(d => `
+              <div class="lookup-result-day">
+                <span>${d.dayName}, ${d.dateId} — ${d.item}</span>
+                <span class="${d.status === 'paid' ? 'lookup-status-paid' : 'lookup-status-pending'}">${d.status === 'paid' ? 'Ordered ✓' : 'Started, not paid'}</span>
+              </div>
+            `).join("")}
+        </div>
+      `).join("");
+    } catch (err) {
+      resultsEl.innerHTML = `<p class="lookup-empty">Something went wrong checking that number. Please try again.</p>`;
+    } finally {
+      lookupBtn.disabled = false;
+      lookupBtn.textContent = originalLabel;
+    }
+  });
+
+  renderMenuTable();
+  updateWindowLabel();
+  addKid();
+
+  // Every minute: re-check the automatic weekly window (in case a Saturday
+  // 10:00 PM rollover just happened) and re-check deadlines (in case a day
+  // just hit 5:00 PM) — so a parent who leaves this page open sees days
+  // open/close and weeks roll over on their own, no refresh needed.
+  let lastWindowStartId = isoDate(WINDOW_START);
+  let lastOpenIds = UPCOMING_DAYS.filter(isDayOpen).map(d => d.id).join(",");
+  setInterval(() => {
+    refreshOrderingWindow();
+    UPCOMING_DAYS = buildUpcomingDays();
+    const newWindowStartId = isoDate(WINDOW_START);
+    const nowOpenIds = UPCOMING_DAYS.filter(isDayOpen).map(d => d.id).join(",");
+
+    if (newWindowStartId !== lastWindowStartId) {
+      lastWindowStartId = newWindowStartId;
+      lastOpenIds = nowOpenIds;
+      updateWindowLabel();
+      rerenderAllDayGrids();
+      showToast("A new ordering week is now open.");
+    } else if (nowOpenIds !== lastOpenIds) {
+      lastOpenIds = nowOpenIds;
+      rerenderAllDayGrids();
+      showToast("A lunch day just closed for ordering.");
+    }
+  }, 60 * 1000);
+</script>
+
+</body>
+</html>
