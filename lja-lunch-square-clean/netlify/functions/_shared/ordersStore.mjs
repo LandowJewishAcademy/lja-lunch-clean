@@ -7,7 +7,7 @@
 
 import { getStore } from "@netlify/blobs";
 
-export function getOrdersStore() {
+function getNamedStore(name) {
   const siteID = process.env.NETLIFY_SITE_ID;
   const token = process.env.NETLIFY_BLOBS_TOKEN;
 
@@ -17,5 +17,16 @@ export function getOrdersStore() {
     );
   }
 
-  return getStore({ name: "orders", siteID, token });
+  return getStore({ name, siteID, token });
 }
+
+export function getOrdersStore() {
+  return getNamedStore("orders");
+}
+
+// Tracks which days the teacher email has already gone out for, so the
+// scheduled function (which checks every ~10 minutes) never sends twice.
+export function getTeacherEmailLogStore() {
+  return getNamedStore("teacher-email-log");
+}
+
