@@ -188,7 +188,7 @@ To change any of this: edit `addOffRange(...)` calls and
 
 ## 8. K-5 teacher daily lunch email — setup
 
-Every school day at 8:15 AM Eastern, each K-5 teacher automatically
+Every school day at 8:10 AM Eastern, each K-5 teacher automatically
 receives an email listing which of their students ordered lunch that
 day. Teachers who teach more than one grade (currently just Abigail
 Treasure, 3rd & 5th) get both grades listed in one email.
@@ -228,13 +228,13 @@ whenever you're ready for them to start receiving the daily email.
 
 ### How the scheduling actually works
 
-Cron schedules run in UTC, but "8:15 AM" in Florida shifts by an hour
+Cron schedules run in UTC, but "8:10 AM" in Florida shifts by an hour
 between winter (EST) and summer (EDT) as Daylight Saving Time changes.
 Rather than a single fixed time that would drift an hour off twice a
 year, this function is scheduled to run every 10 minutes across a
 window covering both possibilities (`config.schedule` in
 `teacher-daily-email.mjs`), and the function itself checks the real
-Eastern-time clock, only actually sending once it's genuinely 8:15 AM
+Eastern-time clock, only actually sending once it's genuinely 8:10 AM
 locally. A log entry in Netlify Blobs (`teacher-email-log` store)
 guarantees it only sends once per day even though the schedule fires
 several times during that hour.
