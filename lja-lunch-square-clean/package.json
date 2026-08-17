@@ -2,6 +2,7 @@
   "name": "lja-lunch-square",
   "private": true,
   "dependencies": {
-    "@netlify/blobs": "^9.1.6"
+    "@netlify/blobs": "^9.1.6",
+    "pdf-lib": "^1.17.1"
   }
 }

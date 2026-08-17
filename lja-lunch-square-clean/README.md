@@ -255,3 +255,59 @@ send from this environment (no way to reach Resend's API from here) —
 the code is correct as written, but a real end-to-end test (does the
 email actually land, does it look right in an inbox) is worth doing
 once it's deployed.
+
+## 9. Admin daily summary PDF — setup
+
+Each school morning at 8:10 AM Eastern (same time as the teacher
+email), a PDF version of the daily summary — the same content as the
+"Print Daily Summary" button on the staff page — is emailed to the
+administrator list.
+
+This PDF is built entirely on the server using a lightweight library
+called `pdf-lib`, deliberately chosen over a headless-browser approach
+(like Puppeteer) since that would have added a much heavier, more
+fragile dependency to a project that already had one bad experience
+with a broken dependency chain (`@netlify/otel`). `pdf-lib` has a small,
+clean dependency tree and draws the PDF directly rather than rendering
+HTML, so it's both lighter and more reliable in a serverless
+environment.
+
+### Setup
+
+This reuses the exact same `RESEND_API_KEY` and `TEACHER_EMAIL_FROM`
+environment variables already set up for the teacher email (Section 8)
+— no new environment variables needed.
+
+### To update the admin recipient list
+
+Edit `netlify/functions/_shared/adminRecipients.mjs` — it's just a
+plain list of email addresses. Add, remove, or fix a typo there, then
+redeploy.
+
+**Current list has two different domains** (`ljaonline.com` and
+`tjaonline.com`) — this matches exactly what was provided when this was
+set up. Worth double-checking this is intentional and not a typo (we've
+had a mixed-domain typo cause a real problem once already in this
+project, with `TEACHER_EMAIL_FROM`).
+
+### What's in the PDF
+
+- Top stats: paid orders, revenue, how many grades ordered, and a
+  flagged count of unpaid/incomplete checkouts if any
+- Totals by grade band (K–5, 6–8, 9–12)
+- Kitchen prep item counts
+- Totals by grade
+- Full student list per grade (child + parent name)
+- A separate flagged section for anyone who started checkout but never
+  finished paying
+
+### Testing note
+
+I generated real sample PDFs using this exact code (not a mockup) and
+visually confirmed the layout, verified all the numbers add up
+correctly, and confirmed it correctly spans multiple pages for larger
+order volumes (tested with 90 students across 6 grades → 3 pages). What
+I could not test from this environment: an actual Resend delivery with
+a real PDF attachment landing in a real inbox — that first live send is
+worth watching closely in the Netlify function logs (**Functions →
+admin-daily-summary → logs**) the first morning it runs for real.
