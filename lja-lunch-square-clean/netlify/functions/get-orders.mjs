@@ -1,10 +1,12 @@
 // netlify/functions/get-orders.mjs
 //
-// Returns the list of orders from Netlify Blobs for the staff webpage.
-// Protected by a shared passcode (STAFF_ORDERS_PASSCODE env var) sent as
-// the x-staff-passcode header — not bank-vault security, but enough to
-// keep this off of Google and out of casual reach. Optional ?date=
-// query param filters to orders containing at least one item for that day.
+// Returns every order from Netlify Blobs for the staff webpage. Protected
+// by a shared passcode (STAFF_ORDERS_PASSCODE env var) sent as the
+// x-staff-passcode header. Fetches all order records IN PARALLEL rather
+// than one at a time — with sequential fetches this got noticeably slower
+// as the number of stored orders grew. The front-end fetches once and
+// does its own date/grade filtering client-side, rather than asking this
+// function for a filtered view on every interaction.
 
 import { getOrdersStore } from "./_shared/ordersStore.mjs";
 
@@ -23,23 +25,12 @@ export const handler = async function (event) {
     return { statusCode: 401, body: JSON.stringify({ error: "Incorrect passcode." }) };
   }
 
-  const dateFilter = event.queryStringParameters && event.queryStringParameters.date; // "YYYY-MM-DD"
-
-  const orders = [];
+  let orders;
   try {
     const store = getOrdersStore();
     const { blobs } = await store.list();
-    for (const b of blobs) {
-      const record = await store.get(b.key, { type: "json" });
-      if (!record) continue;
-      if (dateFilter) {
-        const matchingItems = record.items.filter(i => i.dateId === dateFilter);
-        if (matchingItems.length === 0) continue;
-        orders.push({ ...record, items: matchingItems });
-      } else {
-        orders.push(record);
-      }
-    }
+    const records = await Promise.all(blobs.map(b => store.get(b.key, { type: "json" })));
+    orders = records.filter(Boolean);
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }

@@ -2,26 +2,28 @@
 //
 // Runs automatically on a schedule (see the `config.schedule` export
 // below) and emails each K-5 teacher a list of which of their students
-// ordered lunch that day.
+// ordered lunch that day. Sends at 8:15 AM Eastern.
 //
 // WHY THIS RUNS EVERY ~10 MINUTES INSTEAD OF ONCE A DAY: cron schedules
-// run in UTC, but "9:00 AM" in Florida shifts between UTC-5 (winter) and
+// run in UTC, but "8:15 AM" in Florida shifts between UTC-5 (winter) and
 // UTC-4 (summer) as Daylight Saving Time changes — a fixed UTC cron time
 // would drift an hour off twice a year. Instead, this runs every 10
-// minutes across a window that covers 9:00 AM Eastern in both cases, and
+// minutes across a window that covers 8:15 AM Eastern in both cases, and
 // the function itself checks the real Eastern-time clock and only
-// actually sends once it's genuinely 9:00 AM local time. A log entry in
-// Netlify Blobs guarantees it only sends once per day even though the
-// schedule fires multiple times during that hour.
+// actually sends once it's genuinely 8:15 AM (or just after) local time.
+// A log entry in Netlify Blobs guarantees it only sends once per day
+// even though the schedule fires multiple times during that window.
 //
 // Requires an email-sending account — see README for full setup.
 // Required env vars: RESEND_API_KEY, TEACHER_EMAIL_FROM.
 
-export const config = { schedule: "*/10 12,13,14 * * *" };
+export const config = { schedule: "*/10 12,13 * * *" };
 
 import { getOrdersStore, getTeacherEmailLogStore } from "./_shared/ordersStore.mjs";
 import { OFF_DATES, SCHOOL_YEAR_START, SCHOOL_YEAR_END } from "./_shared/schoolCalendar.mjs";
 import { TEACHERS, GRADE_LABEL_TO_FULL } from "./_shared/teacherRoster.mjs";
+
+const EASTERN_TARGET_MINUTES = 8 * 60 + 15; // 8:15 AM
 
 function nowEasternParts() {
   const fmt = new Intl.DateTimeFormat("en-US", {
@@ -61,11 +63,14 @@ export default async () => {
   const parts = nowEasternParts();
   const todayIso = `${parts.year}-${parts.month}-${parts.day}`;
   const hour = parseInt(parts.hour, 10);
+  const minute = parseInt(parts.minute, 10);
+  const minuteOfDay = hour * 60 + minute;
 
-  // Only actually run right around 9:00 AM Eastern, whichever UTC hour that
-  // currently is.
-  if (hour !== 9) {
-    return new Response("Not 9:00 AM Eastern right now — skipping.", { status: 200 });
+  // Only actually run once it's genuinely 8:15 AM Eastern or just after —
+  // the cron window runs a bit before that, so this guards against firing
+  // too early.
+  if (minuteOfDay < EASTERN_TARGET_MINUTES) {
+    return new Response("Not yet 8:15 AM Eastern — skipping.", { status: 200 });
   }
 
   if (todayIso < SCHOOL_YEAR_START || todayIso > SCHOOL_YEAR_END || OFF_DATES.has(todayIso)) {

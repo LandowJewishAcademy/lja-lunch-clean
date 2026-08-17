@@ -185,3 +185,73 @@ To change any of this: edit `addOffRange(...)` calls and
 `SCHOOL_YEAR_START` / `SCHOOL_YEAR_END` in **both**
 `netlify/functions/_shared/schoolCalendar.mjs` and the `<script>` in
 `index.html`, then redeploy.
+
+## 8. K-5 teacher daily lunch email — setup
+
+Every school day at 8:15 AM Eastern, each K-5 teacher automatically
+receives an email listing which of their students ordered lunch that
+day. Teachers who teach more than one grade (currently just Abigail
+Treasure, 3rd & 5th) get both grades listed in one email.
+
+### One-time setup
+
+1. **Create a free account at [resend.com](https://resend.com)** — this
+   is the email-sending service; nothing in Netlify or Square sends
+   email on its own.
+2. **Verify your domain** (`ljaonline.com`) inside Resend, following
+   their domain-verification steps (adding a few DNS records — your
+   web/IT provider or whoever manages ljaonline.com's DNS can help if
+   needed). Emails can't actually send until this is done — Resend
+   won't let you send from an address on an unverified domain.
+3. Create an **API key** in Resend, and add these two environment
+   variables in Netlify:
+
+   | Key | Value |
+   |---|---|
+   | `RESEND_API_KEY` | the API key from Resend |
+   | `TEACHER_EMAIL_FROM` | an address on your verified domain, e.g. `lunch@ljaonline.com` |
+
+4. Redeploy so the new environment variables and the new scheduled
+   function take effect.
+
+### To update the teacher roster
+
+Edit `netlify/functions/_shared/teacherRoster.mjs` — add, remove, or
+change a teacher's grade(s) there. Grade labels must be one of `PK2`,
+`PK3`, `PK4`, `K`, `1st`, `2nd`, `3rd`, `4th`, or `5th` (matching
+`GRADE_LABEL_TO_FULL` in that same file). Redeploy after editing.
+
+**Note:** PK2/PK3/PK4 are now valid grade options on the parent order
+form, but no PK teachers are in this roster yet — add them the same way
+as any other teacher (e.g. `{ name: "...", email: "...", grades: ["PK3"] }`)
+whenever you're ready for them to start receiving the daily email.
+
+### How the scheduling actually works
+
+Cron schedules run in UTC, but "8:15 AM" in Florida shifts by an hour
+between winter (EST) and summer (EDT) as Daylight Saving Time changes.
+Rather than a single fixed time that would drift an hour off twice a
+year, this function is scheduled to run every 10 minutes across a
+window covering both possibilities (`config.schedule` in
+`teacher-daily-email.mjs`), and the function itself checks the real
+Eastern-time clock, only actually sending once it's genuinely 8:15 AM
+locally. A log entry in Netlify Blobs (`teacher-email-log` store)
+guarantees it only sends once per day even though the schedule fires
+several times during that hour.
+
+It also automatically skips weekends, holidays, and any day outside the
+school year, using the same calendar as the ordering form (Section 7)
+— nothing extra to maintain there.
+
+### A note on what I couldn't verify
+
+Netlify's scheduled-functions feature and exact syntax may have shifted
+since this was written — if the function doesn't appear to be running
+on schedule at all, check Netlify's current docs on Scheduled Functions
+against what's in `teacher-daily-email.mjs`, and check **Functions →
+teacher-daily-email → logs** in the Netlify dashboard to see if it's
+firing and what it's returning. I also couldn't test an actual email
+send from this environment (no way to reach Resend's API from here) —
+the code is correct as written, but a real end-to-end test (does the
+email actually land, does it look right in an inbox) is worth doing
+once it's deployed.

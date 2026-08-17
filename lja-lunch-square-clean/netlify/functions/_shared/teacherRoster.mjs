@@ -26,6 +26,9 @@ export const TEACHERS = [
 // Short label -> exact grade string used in order records (must match
 // the GRADES list in index.html and the staff page).
 export const GRADE_LABEL_TO_FULL = {
+  "PK2": "PK2",
+  "PK3": "PK3",
+  "PK4": "PK4",
   "K": "Kindergarten",
   "1st": "1st Grade",
   "2nd": "2nd Grade",
