@@ -39,7 +39,11 @@ function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-async function sendEmail(to, subject, html) {
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function sendEmail(to, subject, html, attempt = 1) {
   const resp = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -53,6 +57,13 @@ async function sendEmail(to, subject, html) {
       html,
     }),
   });
+  if (resp.status === 429 && attempt < 3) {
+    // Resend allows 10 requests/second. We already space our own sends out
+    // to stay well under that, but as a safety net, back off and retry if
+    // a rate limit is ever hit anyway (e.g. from a burst or overlapping run).
+    await sleep(500 * attempt);
+    return sendEmail(to, subject, html, attempt + 1);
+  }
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}));
     throw new Error(`Resend error for ${to}: ${JSON.stringify(data)}`);
@@ -109,29 +120,39 @@ export default async () => {
     weekday: "long", month: "long", day: "numeric",
   });
 
-  const results = await Promise.allSettled(
-    TEACHERS.map(teacher => {
-      const sections = teacher.grades.map(shortGrade => {
-        const fullGrade = GRADE_LABEL_TO_FULL[shortGrade];
-        const students = studentsByFullGrade[fullGrade] || [];
-        const list = students.length > 0
-          ? `<ul>${students.map(name => `<li>${escapeHtml(name)}</li>`).join("")}</ul>`
-          : `<p style="color:#5c6474; font-style:italic;">No students in ${escapeHtml(fullGrade)} ordered lunch today.</p>`;
-        return `<h3 style="margin-top:18px; color:#16264a;">${escapeHtml(fullGrade)} (${students.length})</h3>${list}`;
-      }).join("");
+  // Send one at a time with a short pause between each — sending all 13
+  // at once was hitting Resend's 10-requests/second limit (that's what
+  // caused a real missed email once already). This stays comfortably
+  // under that limit regardless of how large the roster grows later.
+  const results = [];
+  for (const teacher of TEACHERS) {
+    const sections = teacher.grades.map(shortGrade => {
+      const fullGrade = GRADE_LABEL_TO_FULL[shortGrade];
+      const students = studentsByFullGrade[fullGrade] || [];
+      const list = students.length > 0
+        ? `<ul>${students.map(name => `<li>${escapeHtml(name)}</li>`).join("")}</ul>`
+        : `<p style="color:#5c6474; font-style:italic;">No students in ${escapeHtml(fullGrade)} ordered lunch today.</p>`;
+      return `<h3 style="margin-top:18px; color:#16264a;">${escapeHtml(fullGrade)} (${students.length})</h3>${list}`;
+    }).join("");
 
-      const html = `
-        <div style="font-family:-apple-system,Helvetica,Arial,sans-serif; max-width:500px;">
-          <h2 style="color:#16264a; margin-bottom:2px;">Lion Cafe — Today's Lunch Orders</h2>
-          <p style="color:#5c6474; margin-top:0;">${dateLabel}</p>
-          <p>Hi ${escapeHtml(teacher.name.split(" ")[0])}, here's who ordered lunch today in your class${teacher.grades.length > 1 ? "es" : ""}:</p>
-          ${sections}
-        </div>
-      `;
+    const html = `
+      <div style="font-family:-apple-system,Helvetica,Arial,sans-serif; max-width:500px;">
+        <h2 style="color:#16264a; margin-bottom:2px;">Lion Cafe — Today's Lunch Orders</h2>
+        <p style="color:#5c6474; margin-top:0;">${dateLabel}</p>
+        <p>Hi ${escapeHtml(teacher.name.split(" ")[0])}, here's who ordered lunch today in your class${teacher.grades.length > 1 ? "es" : ""}:</p>
+        ${sections}
+      </div>
+    `;
 
-      return sendEmail(teacher.email, `Lunch Orders Today — ${dateLabel}`, html);
-    })
-  );
+    try {
+      await sendEmail(teacher.email, `Lunch Orders Today — ${dateLabel}`, html);
+      results.push({ status: "fulfilled" });
+    } catch (err) {
+      results.push({ status: "rejected", reason: err });
+    }
+
+    await sleep(150); // ~6-7 requests/second, well under Resend's 10/sec limit
+  }
 
   const failures = results.filter(r => r.status === "rejected");
   failures.forEach(f => console.error("Teacher email failed:", f.reason && f.reason.message));
