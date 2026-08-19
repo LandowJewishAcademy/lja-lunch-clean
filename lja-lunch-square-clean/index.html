@@ -687,7 +687,54 @@
 
   const dateFmt = d => d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const timeFmt = d => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  const isoDate = d => d.toISOString().slice(0, 10);
+  const isoDate = d => {
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  // Converts a wall-clock time meant as "America/New_York local time" into
+  // the correct UTC instant, accounting for Daylight Saving Time. Needed so
+  // deadlines and the weekly rollover are always genuinely Eastern Time —
+  // regardless of what timezone a parent's own device happens to be set to.
+  // (This closes off an entire class of "my phone's timezone is wrong"
+  // failure that previously could lock someone out early or let them order
+  // late, depending on their device.)
+  function easternWallTimeToUTC(y, m, d, hh, mm, ss = 0) {
+    const guessUTC = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    });
+    const parts = {};
+    fmt.formatToParts(guessUTC).forEach(p => { if (p.type !== "literal") parts[p.type] = p.value; });
+    const shownAsUTC = Date.UTC(
+      parseInt(parts.year, 10), parseInt(parts.month, 10) - 1, parseInt(parts.day, 10),
+      parseInt(parts.hour, 10), parseInt(parts.minute, 10), parseInt(parts.second, 10)
+    );
+    const correction = guessUTC.getTime() - shownAsUTC;
+    return new Date(guessUTC.getTime() + correction);
+  }
+
+  // What year/month/day/weekday/hour it genuinely is right now in Eastern
+  // Time, regardless of the visitor's own device timezone.
+  function easternNowParts() {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+      weekday: "short",
+    });
+    const parts = {};
+    fmt.formatToParts(new Date()).forEach(p => { if (p.type !== "literal") parts[p.type] = p.value; });
+    const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return {
+      year: parseInt(parts.year, 10), month: parseInt(parts.month, 10), day: parseInt(parts.day, 10),
+      hour: parseInt(parts.hour, 10), minute: parseInt(parts.minute, 10),
+      dow: weekdayMap[parts.weekday],
+    };
+  }
+
   const fmt = n => "$" + n.toFixed(2);
 
   // ---- Days with no school, from the 2026-2027 LJA calendar ----
@@ -716,20 +763,24 @@
   addOffRange(2027, 4, 19, 2027, 4, 30);   // Pesach Break
   addOffRange(2027, 5, 31, 2027, 5, 31);   // Memorial Day
 
-  // A new ordering week opens automatically every Saturday at 10:00 PM,
-  // showing the following Monday-Friday. Before that Saturday-10pm mark,
-  // the currently-open week (the previous rollover's week) still shows.
-  function computeOrderingWeek(now) {
-    const dow = now.getDay(); // 0=Sun ... 6=Sat
-    const daysSinceSaturday = (dow - 6 + 7) % 7;
-    const thisSaturday = new Date(now);
-    thisSaturday.setHours(0, 0, 0, 0);
+  // A new ordering week opens automatically every Saturday at 10:00 PM
+  // Eastern Time, showing the following Monday-Friday. Before that
+  // Saturday-10pm mark, the currently-open week (the previous rollover's
+  // week) still shows. Both "what day is it" and "has 10pm passed" are
+  // determined using genuine Eastern Time, not the visitor's device clock.
+  function computeOrderingWeek() {
+    const np = easternNowParts();
+    const daysSinceSaturday = (np.dow - 6 + 7) % 7;
+
+    const thisSaturday = new Date(np.year, np.month - 1, np.day);
     thisSaturday.setDate(thisSaturday.getDate() - daysSinceSaturday);
-    const rollover = new Date(thisSaturday);
-    rollover.setHours(22, 0, 0, 0);
+
+    const rolloverInstant = easternWallTimeToUTC(
+      thisSaturday.getFullYear(), thisSaturday.getMonth() + 1, thisSaturday.getDate(), 22, 0, 0
+    );
 
     const qualifyingSaturday = new Date(thisSaturday);
-    if (now < rollover) qualifyingSaturday.setDate(qualifyingSaturday.getDate() - 7);
+    if (new Date() < rolloverInstant) qualifyingSaturday.setDate(qualifyingSaturday.getDate() - 7);
 
     const monday = new Date(qualifyingSaturday);
     monday.setDate(monday.getDate() + 2);
@@ -741,7 +792,7 @@
   let WINDOW_START, WINDOW_END, SEASON_ENDED;
 
   function refreshOrderingWindow() {
-    const wk = computeOrderingWeek(new Date());
+    const wk = computeOrderingWeek();
     if (wk.start < SCHOOL_YEAR_START) {
       WINDOW_START = new Date(SCHOOL_YEAR_START);
       WINDOW_END = new Date(SCHOOL_YEAR_START);
@@ -788,9 +839,11 @@
       const id = isoDate(lunchDate);
       if (OFF_DATES.has(id)) return;
       const menu = MENU_BY_WEEKDAY[lunchDate.getDay()];
-      const deadline = new Date(lunchDate);
-      deadline.setDate(deadline.getDate() - 1);
-      deadline.setHours(DEADLINE_HOUR, 0, 0, 0);
+      const dayBefore = new Date(lunchDate);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      const deadline = easternWallTimeToUTC(
+        dayBefore.getFullYear(), dayBefore.getMonth() + 1, dayBefore.getDate(), DEADLINE_HOUR, 0, 0
+      );
       days.push({
         id,
         date: lunchDate,
