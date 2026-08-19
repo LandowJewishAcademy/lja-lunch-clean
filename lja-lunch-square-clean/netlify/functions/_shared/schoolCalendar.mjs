@@ -49,12 +49,37 @@ addOffRange(2027, 3, 23, 2027, 3, 23);   // Purim
 addOffRange(2027, 4, 19, 2027, 4, 30);   // Pesach Break
 addOffRange(2027, 5, 31, 2027, 5, 31);   // Memorial Day
 
+// Converts a wall-clock time meant as "America/New_York local time" into
+// the correct UTC instant, accounting for Daylight Saving Time. This is
+// necessary because Netlify's servers run in UTC, not Eastern — without
+// this, "5:00 PM" would silently mean 5:00 PM UTC (1:00 PM Eastern in
+// summer, noon in winter), locking parents out hours earlier than
+// intended. (This was a real bug, fixed here.)
+function easternWallTimeToUTC(y, m, d, hh, mm, ss = 0) {
+  const guessUTC = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  });
+  const parts = {};
+  fmt.formatToParts(guessUTC).forEach(p => { if (p.type !== "literal") parts[p.type] = p.value; });
+  const shownAsUTC = Date.UTC(
+    parseInt(parts.year, 10), parseInt(parts.month, 10) - 1, parseInt(parts.day, 10),
+    parseInt(parts.hour, 10), parseInt(parts.minute, 10), parseInt(parts.second, 10)
+  );
+  const correction = guessUTC.getTime() - shownAsUTC;
+  return new Date(guessUTC.getTime() + correction);
+}
+
 export function deadlineFor(isoDateStr) {
-  const lunchDate = new Date(isoDateStr + "T00:00:00");
-  const deadline = new Date(lunchDate);
-  deadline.setDate(deadline.getDate() - 1);
-  deadline.setHours(DEADLINE_HOUR, 0, 0, 0);
-  return deadline;
+  const [y, m, d] = isoDateStr.split("-").map(Number);
+  const dayBeforeUTC = new Date(Date.UTC(y, m - 1, d));
+  dayBeforeUTC.setUTCDate(dayBeforeUTC.getUTCDate() - 1);
+  return easternWallTimeToUTC(
+    dayBeforeUTC.getUTCFullYear(), dayBeforeUTC.getUTCMonth() + 1, dayBeforeUTC.getUTCDate(),
+    DEADLINE_HOUR, 0, 0
+  );
 }
 
 // Validates one { dateId } line item against the calendar/deadline rules.
