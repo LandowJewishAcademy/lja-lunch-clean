@@ -39,6 +39,21 @@
   }
   .sub { color: var(--ink-soft); margin: 0 0 22px; font-size: 0.9rem; }
 
+  .tab-row { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .tab-btn {
+    padding: 9px 18px;
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--navy); }
+  .tab-btn.active { color: var(--navy); border-bottom-color: var(--gold); }
+
   .gate {
     background: var(--paper);
     border: 1px solid var(--line);
@@ -197,36 +212,53 @@
   <h1>Lion Cafe — Orders</h1>
   <p class="sub">Orders from Square checkouts. The date filter below only shows orders with a lunch on that exact day — use "All upcoming" if you're unsure which date to check.</p>
 
-  <div class="toolbar">
-    <label for="dateFilter">Day</label>
-    <input type="date" id="dateFilter">
-    <button id="todayBtn" type="button">Today</button>
-    <button id="allBtn" type="button">All upcoming</button>
-    <label for="gradeFilter" style="margin-left:6px;">Grade</label>
-    <select id="gradeFilter"><option value="">All grades</option></select>
-    <button id="refreshBtn" type="button">Refresh</button>
-    <button id="exportBtn" type="button">Export CSV</button>
-    <button id="printSummaryBtn" type="button">Print Daily Summary</button>
+  <div class="tab-row">
+    <button type="button" class="tab-btn active" data-tab="activeTab">Active orders</button>
+    <button type="button" class="tab-btn" data-tab="deletedTab">Deleted orders</button>
   </div>
-  <p style="margin-top:-10px; margin-bottom:16px; color:var(--ink-soft); font-size:0.85rem;">
-    To see exactly who ordered: pick a specific <strong>Day</strong> above, then narrow by <strong>Grade</strong> — the order detail table below updates to just that day + grade.
-  </p>
 
-  <section>
-    <h2>Kitchen prep summary</h2>
-    <div id="prepGrid"><p class="loading">Loading…</p></div>
-  </section>
+  <div id="activeTab" class="tab-panel">
+    <div class="toolbar">
+      <label for="dateFilter">Day</label>
+      <input type="date" id="dateFilter">
+      <button id="todayBtn" type="button">Today</button>
+      <button id="allBtn" type="button">All upcoming</button>
+      <label for="gradeFilter" style="margin-left:6px;">Grade</label>
+      <select id="gradeFilter"><option value="">All grades</option></select>
+      <button id="refreshBtn" type="button">Refresh</button>
+      <button id="exportBtn" type="button">Export CSV</button>
+      <button id="printSummaryBtn" type="button">Print Daily Summary</button>
+    </div>
+    <p style="margin-top:-10px; margin-bottom:16px; color:var(--ink-soft); font-size:0.85rem;">
+      To see exactly who ordered: pick a specific <strong>Day</strong> above, then narrow by <strong>Grade</strong> — the order detail table below updates to just that day + grade.
+    </p>
 
-  <section>
-    <h2>Orders by grade, per day</h2>
-    <p style="margin-top:-8px; color:var(--ink-soft); font-size:0.85rem;">Always shows every upcoming day, regardless of the date filter above.</p>
-    <div id="gradeDashboard"><p class="loading">Loading…</p></div>
-  </section>
+    <section>
+      <h2>Kitchen prep summary</h2>
+      <div id="prepGrid"><p class="loading">Loading…</p></div>
+    </section>
 
-  <section>
-    <h2>Order detail</h2>
-    <div id="orderTableWrap"><p class="loading">Loading…</p></div>
-  </section>
+    <section>
+      <h2>Orders by grade, per day</h2>
+      <p style="margin-top:-8px; color:var(--ink-soft); font-size:0.85rem;">Always shows every upcoming day, regardless of the date filter above.</p>
+      <div id="gradeDashboard"><p class="loading">Loading…</p></div>
+    </section>
+
+    <section>
+      <h2>Order detail</h2>
+      <div id="orderTableWrap"><p class="loading">Loading…</p></div>
+    </section>
+  </div>
+
+  <div id="deletedTab" class="tab-panel" style="display:none;">
+    <section>
+      <h2>Deleted orders</h2>
+      <p style="margin-top:-8px; color:var(--ink-soft); font-size:0.85rem;">
+        Orders removed via "Delete order" — kept here as a record, not restorable from this page. Deleting does not undo a Square refund or vice versa.
+      </p>
+      <div id="deletedOrdersWrap"><p class="loading">Loading…</p></div>
+    </section>
+  </div>
 </div>
 
 <script>
@@ -246,6 +278,15 @@
     const d = new Date();
     const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
+  }
+
+  function formatOrderedAt(isoString) {
+    if (!isoString) return "—";
+    const d = new Date(isoString);
+    return d.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
   }
 
   function getPasscode() {
@@ -387,7 +428,7 @@
         <thead>
           <tr>
             <th>Child</th><th>Grade</th><th>Day</th><th>Item</th><th>Price</th>
-            <th>Parent</th><th>Status</th><th></th>
+            <th>Parent</th><th>Time Ordered</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -399,6 +440,7 @@
               <td>${r.item}</td>
               <td>$${(r.amountCents / 100).toFixed(2)}</td>
               <td>${r.parentName}<br><span style="color:var(--ink-soft);font-size:0.8rem;">${r.parentEmail}</span></td>
+              <td style="white-space:nowrap;">${formatOrderedAt(r.createdAt)}</td>
               <td class="${r.status === 'paid' ? 'status-paid' : 'status-pending'}">${r.status}</td>
               <td><button type="button" class="delete-order-btn" data-order-ref="${r.orderRef}" data-child="${r.childName}" data-parent="${r.parentName}">Delete order</button></td>
             </tr>
@@ -668,17 +710,25 @@
     );
     if (!confirmed) return;
 
+    const deletePassword = prompt("Enter the delete password to confirm:");
+    if (deletePassword === null) return; // cancelled
+    if (!deletePassword) {
+      alert("A password is required to delete an order.");
+      return;
+    }
+
     btn.disabled = true;
     btn.textContent = "Deleting…";
     try {
       const res = await fetch("/.netlify/functions/delete-order", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-staff-passcode": getPasscode() },
-        body: JSON.stringify({ orderRef }),
+        body: JSON.stringify({ orderRef, deletePassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not delete order.");
       showToast(`Deleted order for ${child}.`);
+      deletedOrdersLoaded = false; // force a fresh fetch next time that tab is opened
       await loadAndRender();
     } catch (err) {
       alert("Failed to delete: " + err.message);
@@ -760,6 +810,81 @@
   gradeFilter.addEventListener("change", () => {
     // Just re-filter the already-fetched data — no need to hit the network again.
     renderOrderTable(lastDateFilteredOrders);
+  });
+
+  // --- Deleted orders tab ---
+  let deletedOrdersLoaded = false;
+
+  async function fetchDeletedOrders() {
+    const resp = await fetch(`/.netlify/functions/get-deleted-orders`, { headers: { "x-staff-passcode": getPasscode() } });
+    if (resp.status === 401) throw new Error("UNAUTHORIZED");
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Failed to load deleted orders.");
+    return data.orders;
+  }
+
+  function renderDeletedOrders(orders) {
+    const wrap = document.getElementById("deletedOrdersWrap");
+    const rows = [];
+    orders.forEach(o => {
+      o.items.forEach(i => {
+        rows.push({ ...i, parentName: o.parentName, parentEmail: o.parentEmail, status: o.status, deletedAt: o.deletedAt });
+      });
+    });
+    if (rows.length === 0) {
+      wrap.innerHTML = `<p class="empty">No deleted orders.</p>`;
+      return;
+    }
+    rows.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Child</th><th>Grade</th><th>Day</th><th>Item</th><th>Price</th>
+            <th>Parent</th><th>Original Status</th><th>Deleted At</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${r.childName}</td>
+              <td>${r.grade || "—"}</td>
+              <td>${r.dayName}, ${r.dateId}</td>
+              <td>${r.item}</td>
+              <td>$${(r.amountCents / 100).toFixed(2)}</td>
+              <td>${r.parentName}<br><span style="color:var(--ink-soft);font-size:0.8rem;">${r.parentEmail}</span></td>
+              <td>${r.status}</td>
+              <td style="white-space:nowrap;">${formatOrderedAt(r.deletedAt)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  async function loadDeletedOrders() {
+    document.getElementById("deletedOrdersWrap").innerHTML = `<p class="loading">Loading…</p>`;
+    try {
+      const orders = await fetchDeletedOrders();
+      renderDeletedOrders(orders);
+      deletedOrdersLoaded = true;
+    } catch (err) {
+      document.getElementById("deletedOrdersWrap").innerHTML = `<p class="empty">Error loading deleted orders: ${err.message}</p>`;
+    }
+  }
+
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const targetId = btn.getAttribute("data-tab");
+      document.querySelectorAll(".tab-panel").forEach(panel => {
+        panel.style.display = panel.id === targetId ? "" : "none";
+      });
+      if (targetId === "deletedTab" && !deletedOrdersLoaded) {
+        loadDeletedOrders();
+      }
+    });
   });
 
   // If a passcode is already stored this session, skip the gate.

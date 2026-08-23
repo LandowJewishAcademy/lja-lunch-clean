@@ -30,3 +30,9 @@ export function getTeacherEmailLogStore() {
   return getNamedStore("teacher-email-log");
 }
 
+// Archive for deleted orders — "delete" moves a record here instead of
+// erasing it, so there's always a record of what was removed and when.
+export function getDeletedOrdersStore() {
+  return getNamedStore("deleted-orders");
+}
+
