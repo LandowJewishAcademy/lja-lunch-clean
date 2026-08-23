@@ -828,7 +828,7 @@
     const rows = [];
     orders.forEach(o => {
       o.items.forEach(i => {
-        rows.push({ ...i, parentName: o.parentName, parentEmail: o.parentEmail, status: o.status, deletedAt: o.deletedAt });
+        rows.push({ ...i, parentName: o.parentName, parentEmail: o.parentEmail, status: o.status, createdAt: o.createdAt, deletedAt: o.deletedAt });
       });
     });
     if (rows.length === 0) {
@@ -841,7 +841,7 @@
         <thead>
           <tr>
             <th>Child</th><th>Grade</th><th>Day</th><th>Item</th><th>Price</th>
-            <th>Parent</th><th>Original Status</th><th>Deleted At</th>
+            <th>Parent</th><th>Time Ordered</th><th>Original Status</th><th>Deleted At</th>
           </tr>
         </thead>
         <tbody>
@@ -853,6 +853,7 @@
               <td>${r.item}</td>
               <td>$${(r.amountCents / 100).toFixed(2)}</td>
               <td>${r.parentName}<br><span style="color:var(--ink-soft);font-size:0.8rem;">${r.parentEmail}</span></td>
+              <td style="white-space:nowrap;">${formatOrderedAt(r.createdAt)}</td>
               <td>${r.status}</td>
               <td style="white-space:nowrap;">${formatOrderedAt(r.deletedAt)}</td>
             </tr>
