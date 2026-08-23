@@ -120,6 +120,12 @@
     padding: 20px 22px;
     margin-bottom: 20px;
   }
+  #orderTableWrap, #gradeDashboard, #deletedOrdersWrap {
+    overflow-x: auto;
+  }
+  #orderTableWrap table, #gradeDashboard table, #deletedOrdersWrap table {
+    min-width: 700px;
+  }
   h2 {
     font-family: var(--serif);
     color: var(--navy);
@@ -275,9 +281,13 @@
     "9th Grade": "9th", "10th Grade": "10th", "11th Grade": "11th", "12th Grade": "12th" };
 
   function todayIso() {
-    const d = new Date();
-    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    const parts = {};
+    fmt.formatToParts(new Date()).forEach(p => { if (p.type !== "literal") parts[p.type] = p.value; });
+    return `${parts.year}-${parts.month}-${parts.day}`;
   }
 
   function formatOrderedAt(isoString) {
@@ -304,24 +314,39 @@
   // Client-side filter to just the items matching a specific day, given
   // the full unfiltered order list. Keeps orders whose full record
   // matched, but trims their .items down to just that day's items.
+  //
+  // When no specific date is picked ("All upcoming"), this also drops
+  // anything from before today — otherwise every past week keeps piling
+  // up in this view forever. Explicitly picking a past date on purpose
+  // (e.g. to look something up) still works and is not affected by this.
   function filterOrdersByDate(orders, dateStr) {
-    if (!dateStr) return orders;
+    if (dateStr) {
+      const result = [];
+      orders.forEach(o => {
+        const matchingItems = o.items.filter(i => i.dateId === dateStr);
+        if (matchingItems.length > 0) result.push({ ...o, items: matchingItems });
+      });
+      return result;
+    }
+    const today = todayIso();
     const result = [];
     orders.forEach(o => {
-      const matchingItems = o.items.filter(i => i.dateId === dateStr);
-      if (matchingItems.length > 0) result.push({ ...o, items: matchingItems });
+      const upcomingItems = o.items.filter(i => i.dateId >= today);
+      if (upcomingItems.length > 0) result.push({ ...o, items: upcomingItems });
     });
     return result;
   }
 
   function renderGradeDashboard(allOrders) {
     const el = document.getElementById("gradeDashboard");
+    const today = todayIso();
 
     // dateId -> { dayName, grade -> count }
     const byDay = {};
     allOrders.forEach(o => {
       if (o.status !== "paid") return;
       o.items.forEach(i => {
+        if (i.dateId < today) return; // never show past days here — this table is "upcoming" by design
         if (!byDay[i.dateId]) byDay[i.dateId] = { dayName: i.dayName, counts: {} };
         const grade = i.grade || "Unspecified";
         byDay[i.dateId].counts[grade] = (byDay[i.dateId].counts[grade] || 0) + 1;
