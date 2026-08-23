@@ -388,18 +388,14 @@
   }
 
   .day-check {
-    display: flex;
-    align-items: center;
-    gap: 9px;
+    display: block;
     border: 1px solid var(--line);
     border-radius: 7px;
-    padding: 9px 10px;
+    padding: 10px 12px;
     background: #fff;
-    cursor: pointer;
     font-size: 0.85rem;
     transition: border-color 0.15s, background 0.15s;
   }
-  .day-check:hover { border-color: var(--gold); }
   .day-check.checked {
     border-color: var(--gold);
     background: #fdf6e5;
@@ -409,15 +405,40 @@
     cursor: not-allowed;
     opacity: 0.65;
   }
-  .day-check.closed:hover { border-color: var(--line); }
-  .day-check input { accent-color: var(--gold); width: 16px; height: 16px; flex-shrink: 0; }
   .day-check .dtext { flex: 1; min-width: 0; }
   .day-check .dname { font-weight: 600; color: var(--navy); display: block; }
-  .day-check .ditem { color: var(--ink-soft); font-size: 0.78rem; }
-  .day-check .ddeadline { font-size: 0.72rem; margin-top: 2px; }
+  .day-check .ditem { color: var(--ink); font-size: 0.85rem; }
+  .day-check .ddeadline { font-size: 0.72rem; margin-top: 2px; display: block; }
   .day-check .ddeadline.open { color: var(--green); }
   .day-check .ddeadline.closed { color: var(--red); }
   .day-check .dprice { color: var(--ink-soft); font-variant-numeric: tabular-nums; font-size: 0.82rem; white-space: nowrap; }
+
+  .option-list { display: flex; flex-direction: column; gap: 6px; }
+  .option-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 10px;
+    background: #fdfcf8;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .option-row:hover { border-color: var(--gold); }
+  .option-row input { accent-color: var(--gold); width: 15px; height: 15px; flex-shrink: 0; }
+  .clear-day-btn {
+    align-self: flex-start;
+    margin-top: 2px;
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+  .clear-day-btn:hover { color: var(--red); }
 
   .kid-subtotal {
     text-align: right;
@@ -669,11 +690,29 @@
 
 <script>
   const MENU_BY_WEEKDAY = {
-    1: { day: "Monday",    item: "Hot dog & onion rings",   price: 8.00 },
-    2: { day: "Tuesday",   item: "Two slices of pizza",     price: 7.50 },
-    3: { day: "Wednesday", item: "Burger & fries",          price: 8.00 },
-    4: { day: "Thursday",  item: "Chicken nuggets & fries", price: 8.00 },
-    5: { day: "Friday",    item: "Two slices of pizza",     price: 7.50 },
+    1: { day: "Monday", options: [
+      { name: "Chicken Lo Mein with Vegetables and Chinese Pasta", price: 8.50 },
+      { name: "Oven-Roasted Turkey Wrap with Israeli Salad", price: 8.50 },
+    ]},
+    2: { day: "Tuesday", options: [
+      { name: "California Roll", price: 8.50 },
+      { name: "Avocado Roll", price: 8.50 },
+      { name: "Two Slices of Pizza", price: 7.50 },
+      { name: "Greek Salad", price: 8.50 },
+      { name: "Caesar Salad", price: 8.50 },
+    ]},
+    3: { day: "Wednesday", options: [
+      { name: "Pasta with Alfredo Sauce & Fruit Cup", price: 8.50 },
+      { name: "Spaghetti with Marinara Sauce & Fruit Cup", price: 8.50 },
+      { name: "Mac & Cheese & Fruit Cup", price: 8.50 },
+    ]},
+    4: { day: "Thursday", options: [
+      { name: "Burger & Fries", price: 8.50 },
+      { name: "Schnitzel & Israeli Salad", price: 8.50 },
+    ]},
+    5: { day: "Friday", options: [
+      { name: "Two Slices of Pizza", price: 7.50 },
+    ]},
   };
 
   const GRADES = ["PK2","PK3","PK4","Kindergarten","1st Grade","2nd Grade","3rd Grade","4th Grade","5th Grade",
@@ -685,8 +724,8 @@
   const SCHOOL_YEAR_START = new Date(2026, 7, 17); // Mon, Aug 17, 2026 — first day (K-12)
   const SCHOOL_YEAR_END   = new Date(2027, 5, 2);  // Tue, Jun 2, 2027 — last day of school
 
-  const dateFmt = d => d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-  const timeFmt = d => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const dateFmt = d => d.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric" });
+  const timeFmt = d => d.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
   const isoDate = d => {
     const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
@@ -848,8 +887,7 @@
         id,
         date: lunchDate,
         dayName: menu.day,
-        item: menu.item,
-        price: menu.price,
+        options: menu.options,
         deadline,
       });
     });
@@ -869,13 +907,23 @@
   }
 
   let kidCount = 0;
-  const kids = {}; // id -> {name, grade, selected: {dayId: bool}}
+  const kids = {}; // id -> {name, grade, selected: {dayId: optionIndex}}
 
   function renderMenuTable() {
     const tbody = document.getElementById("menuTableBody");
-    tbody.innerHTML = Object.values(MENU_BY_WEEKDAY).map(m =>
-      `<tr><td class="day">${m.day}</td><td>${m.item}</td><td class="price">${fmt(m.price)}</td></tr>`
-    ).join("");
+    tbody.innerHTML = Object.values(MENU_BY_WEEKDAY).map(m => `
+      <tr>
+        <td class="day">${m.day}</td>
+        <td colspan="2">
+          ${m.options.map((opt, i) => `
+            <div style="display:flex; justify-content:space-between; gap:10px; ${i > 0 ? 'margin-top:4px; padding-top:4px; border-top:1px dashed rgba(230,201,138,0.25);' : ''}">
+              <span>${i > 0 ? '<span style="color:#c99a4a; font-size:0.75rem; margin-right:4px;">OR</span>' : ''}${opt.name}</span>
+              <span class="price">${fmt(opt.price)}</span>
+            </div>
+          `).join("")}
+        </td>
+      </tr>
+    `).join("");
   }
 
   function dayGridHtml(id) {
@@ -883,25 +931,51 @@
     if (openDays.length === 0) {
       return `<p class="empty-note">No lunch days are currently open for ordering.</p>`;
     }
-    return openDays.map(d => `
-      <label class="day-check" data-id="${id}" data-day="${d.id}">
-        <input type="checkbox" data-id="${id}" data-day="${d.id}" ${kids[id].selected[d.id] ? "checked" : ""}>
-        <span class="dtext">
+    return openDays.map(d => {
+      const chosenIdx = kids[id].selected[d.id];
+      const isChosen = chosenIdx !== undefined && chosenIdx !== null;
+      return `
+      <div class="day-check ${isChosen ? "checked" : ""}" data-id="${id}" data-day="${d.id}">
+        <div class="dtext" style="margin-bottom:8px;">
           <span class="dname">${d.dayName}, ${dateFmt(d.date)}</span>
-          <span class="ditem">${d.item}</span>
           <span class="ddeadline open">Order by ${dateFmt(d.deadline)} ${timeFmt(d.deadline)}</span>
-        </span>
-        <span class="dprice">${fmt(d.price)}</span>
-      </label>
-    `).join("");
+        </div>
+        <div class="option-list">
+          ${d.options.map((opt, i) => `
+            <label class="option-row">
+              <input type="radio" name="dayopt-${id}-${d.id}" data-id="${id}" data-day="${d.id}" data-opt="${i}" ${chosenIdx === i ? "checked" : ""}>
+              <span class="dtext"><span class="ditem">${opt.name}</span></span>
+              <span class="dprice">${fmt(opt.price)}</span>
+            </label>
+          `).join("")}
+          <button type="button" class="clear-day-btn" data-id="${id}" data-day="${d.id}" style="${isChosen ? "" : "display:none;"}">Don't order this day</button>
+        </div>
+      </div>
+    `;
+    }).join("");
   }
 
   function wireDayCheckboxes(card, id) {
-    card.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.addEventListener("change", e => {
+    card.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener("change", e => {
         const dayId = e.target.getAttribute("data-day");
-        kids[id].selected[dayId] = e.target.checked;
-        e.target.closest(".day-check").classList.toggle("checked", e.target.checked);
+        const optIdx = parseInt(e.target.getAttribute("data-opt"), 10);
+        kids[id].selected[dayId] = optIdx;
+        const group = e.target.closest(".day-check");
+        group.classList.add("checked");
+        const clearBtn = group.querySelector(".clear-day-btn");
+        if (clearBtn) clearBtn.style.display = "";
+        renderSummary();
+      });
+    });
+    card.querySelectorAll(".clear-day-btn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const dayId = e.target.getAttribute("data-day");
+        delete kids[id].selected[dayId];
+        const group = e.target.closest(".day-check");
+        group.classList.remove("checked");
+        group.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
+        e.target.style.display = "none";
         renderSummary();
       });
     });
@@ -916,19 +990,16 @@
       const oldSelected = kids[id].selected;
       kids[id].selected = {};
       UPCOMING_DAYS.forEach(d => {
-        kids[id].selected[d.id] = !!(oldSelected[d.id] && isDayOpen(d));
+        const prevChoice = oldSelected[d.id];
+        if (prevChoice !== undefined && prevChoice !== null && isDayOpen(d)) {
+          kids[id].selected[d.id] = prevChoice;
+        }
       });
       const card = document.getElementById(id);
       if (!card) return;
       const grid = card.querySelector(".days-grid");
       grid.innerHTML = dayGridHtml(id);
       wireDayCheckboxes(card, id);
-      UPCOMING_DAYS.filter(isDayOpen).forEach(d => {
-        if (kids[id].selected[d.id]) {
-          const row = card.querySelector(`.day-check[data-day="${d.id}"]`);
-          if (row) row.classList.add("checked");
-        }
-      });
     });
     renderSummary();
   }
@@ -937,7 +1008,6 @@
     kidCount += 1;
     const id = "kid" + kidCount;
     kids[id] = { name: "", grade: "", selected: {} };
-    UPCOMING_DAYS.forEach(d => kids[id].selected[d.id] = false);
 
     const card = document.createElement("div");
     card.className = "kid-card";
@@ -958,7 +1028,7 @@
         </div>
       </div>
       <div class="field" style="margin-bottom:8px;">
-        <label>Which lunch days would you like for this child?</label>
+        <label>For each day, choose one lunch option (or skip the day)</label>
       </div>
       <div class="days-grid">${dayGridHtml(id)}</div>
       <div class="kid-subtotal">Subtotal: <strong id="${id}-subtotal">$0.00</strong></div>
@@ -985,10 +1055,19 @@
     renderSummary();
   }
 
+  function hasChoice(k, dayId) {
+    return k.selected[dayId] !== undefined && k.selected[dayId] !== null;
+  }
+
   function kidTotal(id) {
     const k = kids[id];
     let total = 0;
-    UPCOMING_DAYS.forEach(d => { if (k.selected[d.id] && isDayOpen(d)) total += d.price; });
+    UPCOMING_DAYS.forEach(d => {
+      if (hasChoice(k, d.id) && isDayOpen(d)) {
+        const opt = d.options[k.selected[d.id]];
+        if (opt) total += opt.price;
+      }
+    });
     return total;
   }
 
@@ -1008,7 +1087,7 @@
         const subtotalEl = document.getElementById(id + "-subtotal");
         if (subtotalEl) subtotalEl.textContent = fmt(total);
 
-        const dayCount = UPCOMING_DAYS.filter(d => k.selected[d.id] && isDayOpen(d)).length;
+        const dayCount = UPCOMING_DAYS.filter(d => hasChoice(k, d.id) && isDayOpen(d)).length;
         const label = (k.name || "Unnamed child") + (k.grade ? " — " + k.grade : "");
         rows += `<div class="summary-row"><span class="name">${label} (${dayCount} lunch${dayCount === 1 ? "" : "es"})</span><span>${fmt(total)}</span></div>`;
       });
@@ -1026,12 +1105,16 @@
     Object.keys(kids).forEach(id => {
       const k = kids[id];
       UPCOMING_DAYS.forEach(d => {
-        if (k.selected[d.id] && isDayOpen(d)) {
+        if (hasChoice(k, d.id) && isDayOpen(d)) {
+          const optionIndex = k.selected[d.id];
+          const opt = d.options[optionIndex];
+          if (!opt) return;
           items.push({
             dateId: d.id,
             childName: k.name || "Child",
             grade: k.grade || "",
-            amountCents: Math.round(d.price * 100),
+            optionIndex,
+            amountCents: Math.round(opt.price * 100),
           });
         }
       });
@@ -1098,7 +1181,7 @@
     let firstInvalidField = null;
     for (const id of Object.keys(kids)) {
       const k = kids[id];
-      const hasOrder = UPCOMING_DAYS.some(d => k.selected[d.id] && isDayOpen(d));
+      const hasOrder = UPCOMING_DAYS.some(d => hasChoice(k, d.id) && isDayOpen(d));
       if (!hasOrder) continue;
 
       const card = document.getElementById(id);

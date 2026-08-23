@@ -7,11 +7,29 @@
 // actually gets enforced before any money moves).
 
 export const MENU_BY_WEEKDAY = {
-  1: { day: "Monday",    item: "Hot dog & onion rings",   price: 8.0 },
-  2: { day: "Tuesday",   item: "Two slices of pizza",     price: 7.5 },
-  3: { day: "Wednesday", item: "Burger & fries",          price: 8.0 },
-  4: { day: "Thursday",  item: "Chicken nuggets & fries", price: 8.0 },
-  5: { day: "Friday",    item: "Two slices of pizza",     price: 7.5 },
+  1: { day: "Monday", options: [
+    { name: "Chicken Lo Mein with Vegetables and Chinese Pasta", price: 8.50 },
+    { name: "Oven-Roasted Turkey Wrap with Israeli Salad", price: 8.50 },
+  ]},
+  2: { day: "Tuesday", options: [
+    { name: "California Roll", price: 8.50 },
+    { name: "Avocado Roll", price: 8.50 },
+    { name: "Two Slices of Pizza", price: 7.50 },
+    { name: "Greek Salad", price: 8.50 },
+    { name: "Caesar Salad", price: 8.50 },
+  ]},
+  3: { day: "Wednesday", options: [
+    { name: "Pasta with Alfredo Sauce & Fruit Cup", price: 8.50 },
+    { name: "Spaghetti with Marinara Sauce & Fruit Cup", price: 8.50 },
+    { name: "Mac & Cheese & Fruit Cup", price: 8.50 },
+  ]},
+  4: { day: "Thursday", options: [
+    { name: "Burger & Fries", price: 8.50 },
+    { name: "Schnitzel & Israeli Salad", price: 8.50 },
+  ]},
+  5: { day: "Friday", options: [
+    { name: "Two Slices of Pizza", price: 7.50 },
+  ]},
 };
 
 export const DEADLINE_HOUR = 17; // 5:00 PM the day before
@@ -82,9 +100,10 @@ export function deadlineFor(isoDateStr) {
   );
 }
 
-// Validates one { dateId } line item against the calendar/deadline rules.
-// Returns { ok: true, menu } or { ok: false, status, error }.
-export function validateLineItemDate(dateId, now = new Date()) {
+// Validates one { dateId, optionIndex } line item against the calendar,
+// deadline, and menu-choice rules. Returns { ok: true, menu } (where menu
+// = { day, item, price } for the CHOSEN option) or { ok: false, status, error }.
+export function validateLineItemDate(dateId, optionIndex, now = new Date()) {
   if (!dateId) return { ok: false, status: 400, error: "Line item missing dateId." };
   if (dateId < SCHOOL_YEAR_START || dateId > SCHOOL_YEAR_END) {
     return { ok: false, status: 400, error: `${dateId} is outside the 2026-2027 school year.` };
@@ -93,11 +112,16 @@ export function validateLineItemDate(dateId, now = new Date()) {
     return { ok: false, status: 409, error: `${dateId} is a no-school day — lunch is not available.` };
   }
   const dow = new Date(dateId + "T00:00:00").getDay();
-  const menu = MENU_BY_WEEKDAY[dow];
-  if (!menu) return { ok: false, status: 400, error: `${dateId} is not a valid lunch day.` };
+  const dayMenu = MENU_BY_WEEKDAY[dow];
+  if (!dayMenu) return { ok: false, status: 400, error: `${dateId} is not a valid lunch day.` };
+
+  const idx = Number.isInteger(optionIndex) ? optionIndex : parseInt(optionIndex, 10);
+  const option = Number.isInteger(idx) ? dayMenu.options[idx] : undefined;
+  if (!option) return { ok: false, status: 400, error: `Invalid menu choice for ${dateId}.` };
+
   const deadline = deadlineFor(dateId);
   if (now >= deadline) {
     return { ok: false, status: 409, error: `Ordering for ${dateId} closed at 5:00 PM the day before and is no longer available.` };
   }
-  return { ok: true, menu };
+  return { ok: true, menu: { day: dayMenu.day, item: option.name, price: option.price } };
 }

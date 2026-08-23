@@ -53,7 +53,7 @@ export const handler = async function (event) {
   const orderRecordItems = []; // for our own order log (structured fields)
 
   for (const li of lineItems) {
-    const check = validateLineItemDate(li.dateId, now);
+    const check = validateLineItemDate(li.dateId, li.optionIndex, now);
     if (!check.ok) {
       return { statusCode: check.status, body: JSON.stringify({ error: check.error }) };
     }
