@@ -150,6 +150,18 @@
   tr:last-child td { border-bottom: none; }
   .status-paid { color: var(--green); font-weight: 700; }
   .status-pending { color: var(--red); font-weight: 700; }
+  .delete-order-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--red);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .delete-order-btn:hover { background: #fcebeb; border-color: var(--red); }
 
   table.grade-dash { font-size: 0.82rem; }
   table.grade-dash th, table.grade-dash td { text-align: center; padding: 6px 5px; }
@@ -355,7 +367,7 @@
     let rows = [];
     orders.forEach(o => {
       o.items.forEach(i => {
-        rows.push({ ...i, parentName: o.parentName, parentEmail: o.parentEmail, status: o.status, createdAt: o.createdAt });
+        rows.push({ ...i, orderRef: o.orderRef, parentName: o.parentName, parentEmail: o.parentEmail, status: o.status, createdAt: o.createdAt });
       });
     });
     const gradeFilterEl = document.getElementById("gradeFilter");
@@ -375,7 +387,7 @@
         <thead>
           <tr>
             <th>Child</th><th>Grade</th><th>Day</th><th>Item</th><th>Price</th>
-            <th>Parent</th><th>Status</th>
+            <th>Parent</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -388,6 +400,7 @@
               <td>$${(r.amountCents / 100).toFixed(2)}</td>
               <td>${r.parentName}<br><span style="color:var(--ink-soft);font-size:0.8rem;">${r.parentEmail}</span></td>
               <td class="${r.status === 'paid' ? 'status-paid' : 'status-pending'}">${r.status}</td>
+              <td><button type="button" class="delete-order-btn" data-order-ref="${r.orderRef}" data-child="${r.childName}" data-parent="${r.parentName}">Delete order</button></td>
             </tr>
           `).join("")}
         </tbody>
@@ -637,6 +650,41 @@
       return;
     }
     printDayReport(dateFilter.value);
+  });
+
+  document.getElementById("orderTableWrap").addEventListener("click", async e => {
+    const btn = e.target.closest(".delete-order-btn");
+    if (!btn) return;
+
+    const orderRef = btn.getAttribute("data-order-ref");
+    const child = btn.getAttribute("data-child");
+    const parent = btn.getAttribute("data-parent");
+
+    const confirmed = confirm(
+      `Delete this ENTIRE order for ${child} (${parent})?\n\n` +
+      `This removes it permanently from the system — kitchen counts, teacher emails, and reports will no longer include it.\n\n` +
+      `This does NOT refund anything in Square. Only continue if you've already issued the refund there.\n\n` +
+      `This cannot be undone. Delete anyway?`
+    );
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    btn.textContent = "Deleting…";
+    try {
+      const res = await fetch("/.netlify/functions/delete-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-staff-passcode": getPasscode() },
+        body: JSON.stringify({ orderRef }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not delete order.");
+      showToast(`Deleted order for ${child}.`);
+      await loadAndRender();
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+      btn.disabled = false;
+      btn.textContent = "Delete order";
+    }
   });
 
   function csvEscape(val) {
