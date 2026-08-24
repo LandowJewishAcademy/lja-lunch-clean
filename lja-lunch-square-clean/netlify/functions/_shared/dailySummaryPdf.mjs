@@ -38,9 +38,22 @@ export async function buildDailySummaryPdf({
     }
   }
 
+  // pdf-lib's built-in fonts only support the WinAnsi character set
+  // (basically Latin-1). Real names sometimes carry invisible Unicode
+  // formatting marks (e.g. U+202A, a "left-to-right embedding" control
+  // character that can sneak in from copy-pasting mixed English/Hebrew
+  // text) that this encoding can't represent at all — and pdf-lib throws
+  // rather than skipping them, which crashed this function on every run
+  // once one appeared in real data. Stripping anything outside the safe
+  // range here means a single odd character in one name can never take
+  // down the whole report again.
+  function sanitizeForPdf(text) {
+    return String(text == null ? "" : text).replace(/[^\x00-\xFF]/g, "");
+  }
+
   function line(text, { size = 11, font = fontRegular, color = BLACK, x = MARGIN, gap = 16 } = {}) {
     ensureSpace(gap);
-    page.drawText(text, { x, y: y - size, size, font, color });
+    page.drawText(sanitizeForPdf(text), { x, y: y - size, size, font, color });
     y -= gap;
   }
 
