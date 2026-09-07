@@ -57,6 +57,8 @@ function addOffRange(y1, m1, d1, y2, m2, d2) {
 }
 addOffRange(2026, 8, 5, 2026, 8, 5);     // Staff Reports (no students)
 addOffRange(2026, 8, 13, 2026, 8, 13);   // Orientation only (before first day)
+addOffRange(2026, 8, 28, 2026, 8, 28);   // Unplanned closure (added Aug 24, 2026)
+addOffRange(2026, 9, 11, 2026, 9, 11);   // No school Friday (added Sep 8, 2026)
 addOffRange(2026, 9, 21, 2026, 9, 21);   // Yom Kippur
 addOffRange(2026, 9, 25, 2026, 10, 2);   // Sukkot Break (through "continues")
 addOffRange(2026, 11, 26, 2026, 11, 27); // Thanksgiving
