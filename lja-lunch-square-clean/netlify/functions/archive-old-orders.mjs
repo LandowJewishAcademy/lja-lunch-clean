@@ -19,12 +19,18 @@
 // — cheap to do since the records are already fetched, and it means any
 // order that somehow didn't get indexed at checkout time self-heals
 // within a day, with no separate migration ever needed.
+//
+// All per-record work happens in parallel batches, not one record at a
+// time — with well over a thousand orders, sequential processing here
+// risked silently exceeding the function's time limit every single day
+// (the same bug that caused a 502 in the manual backfill function).
 
 export const config = { schedule: "0 9 * * *" }; // once daily, ~4-5am Eastern
 
 import { getOrdersStore, getArchivedOrdersStore, getPhoneIndexStore } from "./_shared/ordersStore.mjs";
 
 const ARCHIVE_AFTER_DAYS = 14;
+const BATCH_SIZE = 40;
 
 function easternTodayIso() {
   const fmt = new Intl.DateTimeFormat("en-US", {
@@ -44,6 +50,13 @@ function isoDaysBefore(isoStr, days) {
   return `${yy}-${mm}-${dd}`;
 }
 
+async function processInBatches(items, batchSize, fn) {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    await Promise.all(batch.map(fn));
+  }
+}
+
 export default async () => {
   const cutoffIso = isoDaysBefore(easternTodayIso(), ARCHIVE_AFTER_DAYS);
 
@@ -58,13 +71,18 @@ export default async () => {
   try {
     const { blobs } = await ordersStore.list();
     checkedCount = blobs.length;
-    const records = await Promise.all(blobs.map(b => ordersStore.get(b.key, { type: "json" })));
 
-    for (let i = 0; i < blobs.length; i++) {
-      const record = records[i];
-      if (!record || !Array.isArray(record.items) || record.items.length === 0) continue;
+    // Reads: fetch every order record in parallel batches.
+    const records = new Array(blobs.length);
+    await processInBatches(blobs.map((b, i) => ({ b, i })), BATCH_SIZE, async ({ b, i }) => {
+      records[i] = await ordersStore.get(b.key, { type: "json" });
+    });
 
-      // Self-heal the phone index for any order that predates it.
+    // Per-record work (re-index, and archive+delete if old enough) in
+    // parallel batches.
+    await processInBatches(blobs.map((b, i) => ({ b, record: records[i] })), BATCH_SIZE, async ({ b, record }) => {
+      if (!record || !Array.isArray(record.items) || record.items.length === 0) return;
+
       if (record.parentPhone && record.orderRef) {
         try {
           await phoneIndexStore.setJSON(`${record.parentPhone}/${record.orderRef}`, { orderRef: record.orderRef });
@@ -75,13 +93,13 @@ export default async () => {
       }
 
       const allOld = record.items.every(item => item.dateId < cutoffIso);
-      if (!allOld) continue;
+      if (!allOld) return;
 
       const archived = { ...record, archivedAt: new Date().toISOString() };
-      await archiveStore.setJSON(blobs[i].key, archived);
-      await ordersStore.delete(blobs[i].key);
+      await archiveStore.setJSON(b.key, archived);
+      await ordersStore.delete(b.key);
       archivedCount++;
-    }
+    });
   } catch (err) {
     console.error("Failed to archive old orders:", err.message);
     return new Response(`Error: ${err.message}`, { status: 500 });

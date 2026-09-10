@@ -13,8 +13,23 @@
 //
 // Safe to run more than once — it just overwrites the same index
 // entries, nothing gets duplicated or broken.
+//
+// Writes happen in parallel batches (not one at a time, and not all at
+// once) — with well over a thousand orders, writing sequentially took
+// long enough to exceed Netlify's function time limit and returned a
+// 502 to the browser. Batching keeps this fast without overwhelming the
+// storage API with too many simultaneous requests.
 
 import { getOrdersStore, getPhoneIndexStore } from "./_shared/ordersStore.mjs";
+
+const BATCH_SIZE = 40;
+
+async function processInBatches(items, batchSize, fn) {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    await Promise.all(batch.map(fn));
+  }
+}
 
 export const handler = async function (event) {
   const PASSCODE = process.env.STAFF_ORDERS_PASSCODE;
@@ -31,17 +46,22 @@ export const handler = async function (event) {
 
   try {
     const { blobs } = await ordersStore.list();
-    const records = await Promise.all(blobs.map(b => ordersStore.get(b.key, { type: "json" })));
 
-    for (let i = 0; i < blobs.length; i++) {
-      const record = records[i];
-      if (!record || !record.parentPhone || !record.orderRef) {
-        skippedCount++;
-        continue;
-      }
+    // Reads: fetch every order record in parallel batches.
+    const records = [];
+    await processInBatches(blobs, BATCH_SIZE, async (b) => {
+      const record = await ordersStore.get(b.key, { type: "json" });
+      records.push(record);
+    });
+
+    // Writes: build one index entry per valid record, in parallel batches.
+    const toIndex = records.filter(r => r && r.parentPhone && r.orderRef);
+    skippedCount = records.length - toIndex.length;
+
+    await processInBatches(toIndex, BATCH_SIZE, async (record) => {
       await phoneIndexStore.setJSON(`${record.parentPhone}/${record.orderRef}`, { orderRef: record.orderRef });
       indexedCount++;
-    }
+    });
   } catch (err) {
     return { statusCode: 500, body: `Error: ${err.message}` };
   }
