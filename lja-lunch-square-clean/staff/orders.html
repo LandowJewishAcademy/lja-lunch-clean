@@ -221,6 +221,7 @@
   <div class="tab-row">
     <button type="button" class="tab-btn active" data-tab="activeTab">Active orders</button>
     <button type="button" class="tab-btn" data-tab="deletedTab">Deleted orders</button>
+    <button type="button" class="tab-btn" data-tab="archivedTab">Archived orders</button>
   </div>
 
   <div id="activeTab" class="tab-panel">
@@ -263,6 +264,16 @@
         Orders removed via "Delete order" — kept here as a record, not restorable from this page. Deleting does not undo a Square refund or vice versa.
       </p>
       <div id="deletedOrdersWrap"><p class="loading">Loading…</p></div>
+    </section>
+  </div>
+
+  <div id="archivedTab" class="tab-panel" style="display:none;">
+    <section>
+      <h2>Archived orders</h2>
+      <p style="margin-top:-8px; color:var(--ink-soft); font-size:0.85rem;">
+        Ordinary completed orders whose lunch days are more than 2 weeks past — moved here automatically each morning to keep the Active tab (and kitchen counts, teacher emails, etc.) fast. Nothing here was cancelled or refunded — it's just old.
+      </p>
+      <div id="archivedOrdersWrap"><p class="loading">Loading…</p></div>
     </section>
   </div>
 </div>
@@ -899,6 +910,68 @@
     }
   }
 
+  // --- Archived orders tab ---
+  let archivedOrdersLoaded = false;
+
+  async function fetchArchivedOrders() {
+    const resp = await fetch(`/.netlify/functions/get-archived-orders`, { headers: { "x-staff-passcode": getPasscode() } });
+    if (resp.status === 401) throw new Error("UNAUTHORIZED");
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Failed to load archived orders.");
+    return data.orders;
+  }
+
+  function renderArchivedOrders(orders) {
+    const wrap = document.getElementById("archivedOrdersWrap");
+    const rows = [];
+    orders.forEach(o => {
+      o.items.forEach(i => {
+        rows.push({ ...i, parentName: o.parentName, parentEmail: o.parentEmail, status: o.status, createdAt: o.createdAt, archivedAt: o.archivedAt });
+      });
+    });
+    if (rows.length === 0) {
+      wrap.innerHTML = `<p class="empty">No archived orders yet.</p>`;
+      return;
+    }
+    rows.sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt));
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Child</th><th>Grade</th><th>Day</th><th>Item</th><th>Price</th>
+            <th>Parent</th><th>Time Ordered</th><th>Status</th><th>Archived At</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${r.childName}</td>
+              <td>${r.grade || "—"}</td>
+              <td>${r.dayName}, ${r.dateId}</td>
+              <td>${r.item}</td>
+              <td>$${(r.amountCents / 100).toFixed(2)}</td>
+              <td>${r.parentName}<br><span style="color:var(--ink-soft);font-size:0.8rem;">${r.parentEmail}</span></td>
+              <td style="white-space:nowrap;">${formatOrderedAt(r.createdAt)}</td>
+              <td class="${r.status === 'paid' ? 'status-paid' : 'status-pending'}">${r.status}</td>
+              <td style="white-space:nowrap;">${formatOrderedAt(r.archivedAt)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  async function loadArchivedOrders() {
+    document.getElementById("archivedOrdersWrap").innerHTML = `<p class="loading">Loading…</p>`;
+    try {
+      const orders = await fetchArchivedOrders();
+      renderArchivedOrders(orders);
+      archivedOrdersLoaded = true;
+    } catch (err) {
+      document.getElementById("archivedOrdersWrap").innerHTML = `<p class="empty">Error loading archived orders: ${err.message}</p>`;
+    }
+  }
+
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -909,6 +982,9 @@
       });
       if (targetId === "deletedTab" && !deletedOrdersLoaded) {
         loadDeletedOrders();
+      }
+      if (targetId === "archivedTab" && !archivedOrdersLoaded) {
+        loadArchivedOrders();
       }
     });
   });

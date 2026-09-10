@@ -4,13 +4,14 @@
 // number — no login. This is intentionally low-friction for parents who
 // may not reliably check email, but that means it's also not strongly
 // authenticated: anyone who knows a phone number can see that family's
-// upcoming orders (child names, days, items, payment status). It does
-// NOT expose payment details, email, or the phone number itself back to
-// the caller, and only returns TODAY-OR-LATER orders, never order
-// history — deliberately limiting how much this endpoint can leak.
+// orders for THE CURRENT ORDERING WEEK (child names, days, items,
+// payment status) — deliberately scoped to just this week, both to keep
+// the search fast (no need to scan unrelated weeks) and to limit how
+// much this endpoint can leak. It does NOT expose payment details, email,
+// or the phone number itself back to the caller.
 
 import { getOrdersStore } from "./_shared/ordersStore.mjs";
-import { isoDate } from "./_shared/schoolCalendar.mjs";
+import { getCurrentOrderingWeekBounds } from "./_shared/schoolCalendar.mjs";
 
 export const handler = async function (event) {
   if (event.httpMethod !== "GET") {
@@ -24,7 +25,7 @@ export const handler = async function (event) {
     return { statusCode: 400, body: JSON.stringify({ error: "Enter a full phone number." }) };
   }
 
-  const todayIso = isoDate(new Date());
+  const { startIso, endIso } = getCurrentOrderingWeekBounds();
 
   try {
     const store = getOrdersStore();
@@ -35,12 +36,12 @@ export const handler = async function (event) {
     for (const record of records) {
       if (!record || record.parentPhone !== phoneDigits) continue;
 
-      const upcomingItems = record.items.filter(i => i.dateId >= todayIso);
-      if (upcomingItems.length === 0) continue;
+      const thisWeekItems = record.items.filter(i => i.dateId >= startIso && i.dateId <= endIso);
+      if (thisWeekItems.length === 0) continue;
 
       matches.push({
         status: record.status,
-        items: upcomingItems.map(i => ({
+        items: thisWeekItems.map(i => ({
           childName: i.childName,
           grade: i.grade,
           dateId: i.dateId,
@@ -53,7 +54,7 @@ export const handler = async function (event) {
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orders: matches }),
+      body: JSON.stringify({ orders: matches, weekStartIso: startIso, weekEndIso: endIso }),
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };

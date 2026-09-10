@@ -102,6 +102,69 @@ export function deadlineFor(isoDateStr) {
   );
 }
 
+function easternNowParts() {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit", weekday: "short",
+  });
+  const parts = {};
+  fmt.formatToParts(new Date()).forEach(p => { if (p.type !== "literal") parts[p.type] = p.value; });
+  const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    year: parseInt(parts.year, 10), month: parseInt(parts.month, 10), day: parseInt(parts.day, 10),
+    dow: weekdayMap[parts.weekday],
+  };
+}
+
+function isoFromUTCDate(d) {
+  const y = d.getUTCFullYear(), m = String(d.getUTCMonth() + 1).padStart(2, "0"), day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Mirrors the front-end's Saturday-10pm-Eastern rollover rule exactly
+// (see computeOrderingWeek() in index.html), so a backend caller can know
+// which Monday-Friday is CURRENTLY the live ordering week — same clamping
+// to the school year too. Used by check-orders.mjs to scope the parent
+// phone lookup to just this week, instead of scanning all order history.
+export function getCurrentOrderingWeekBounds() {
+  const now = new Date();
+  const np = easternNowParts();
+  const daysSinceSaturday = (np.dow - 6 + 7) % 7;
+
+  const thisSaturday = new Date(Date.UTC(np.year, np.month - 1, np.day));
+  thisSaturday.setUTCDate(thisSaturday.getUTCDate() - daysSinceSaturday);
+
+  const rolloverInstant = easternWallTimeToUTC(
+    thisSaturday.getUTCFullYear(), thisSaturday.getUTCMonth() + 1, thisSaturday.getUTCDate(),
+    22, 0, 0
+  );
+
+  const qualifyingSaturday = new Date(thisSaturday);
+  if (now < rolloverInstant) qualifyingSaturday.setUTCDate(qualifyingSaturday.getUTCDate() - 7);
+
+  const monday = new Date(qualifyingSaturday);
+  monday.setUTCDate(monday.getUTCDate() + 2);
+  const friday = new Date(monday);
+  friday.setUTCDate(friday.getUTCDate() + 4);
+
+  let startIso = isoFromUTCDate(monday);
+  let endIso = isoFromUTCDate(friday);
+
+  if (startIso < SCHOOL_YEAR_START) {
+    startIso = SCHOOL_YEAR_START;
+    const startDate = new Date(SCHOOL_YEAR_START + "T00:00:00Z");
+    startDate.setUTCDate(startDate.getUTCDate() + 4);
+    endIso = isoFromUTCDate(startDate);
+  } else if (startIso > SCHOOL_YEAR_END) {
+    startIso = SCHOOL_YEAR_END; // season already ended
+    endIso = SCHOOL_YEAR_END;
+  } else if (endIso > SCHOOL_YEAR_END) {
+    endIso = SCHOOL_YEAR_END;
+  }
+
+  return { startIso, endIso };
+}
+
 // Validates one { dateId, optionIndex } line item against the calendar,
 // deadline, and menu-choice rules. Returns { ok: true, menu } (where menu
 // = { day, item, price } for the CHOSEN option) or { ok: false, status, error }.

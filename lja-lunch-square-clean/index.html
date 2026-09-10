@@ -588,8 +588,8 @@
 
   <section id="lookup" class="lookup-section">
     <h2>Did I already order? <span class="tag">Look up by phone number</span></h2>
-    <p style="margin-top:-6px; color:var(--ink-soft); font-size:0.88rem;">
-      Not sure if you already placed an order? Enter the phone number you used and we'll show you.
+    <p id="lookupScopeNote" style="margin-top:-6px; color:var(--ink-soft); font-size:0.88rem;">
+      Not sure if you already placed an order this week? Enter the phone number you used and we'll show you.
     </p>
     <div class="lookup-row">
       <input type="tel" id="lookupPhone" placeholder="(555) 123-4567">
@@ -724,8 +724,22 @@
   const SCHOOL_YEAR_START = new Date(2026, 7, 17); // Mon, Aug 17, 2026 — first day (K-12)
   const SCHOOL_YEAR_END   = new Date(2027, 5, 2);  // Tue, Jun 2, 2027 — last day of school
 
+  // Two different kinds of "date" get displayed on this page, and they
+  // need different formatting:
+  //  - dateFmt/timeFmt: for genuine instants (the 5PM deadline) — these
+  //    must force America/New_York explicitly, since the underlying
+  //    value is a real UTC timestamp and the visitor's own device
+  //    timezone is irrelevant to what it should display as.
+  //  - calendarDateFmt: for pure calendar-date values (which day this
+  //    is — WINDOW_START, WINDOW_END, a lunch day's date) that were
+  //    built via local Date arithmetic starting from the correct
+  //    Eastern calendar date. Formatting THESE through an explicitly
+  //    different timezone would shift them by a day for any visitor
+  //    whose device isn't in Eastern time — the opposite of what we
+  //    want. (This was a real bug, found and fixed here.)
   const dateFmt = d => d.toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric" });
   const timeFmt = d => d.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+  const calendarDateFmt = d => d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const isoDate = d => {
     const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
@@ -901,10 +915,15 @@
 
   function updateWindowLabel() {
     const label = document.getElementById("windowRangeLabel");
+    const lookupNote = document.getElementById("lookupScopeNote");
     if (SEASON_ENDED) {
       label.textContent = "The 2026–2027 lunch ordering season has ended.";
+      if (lookupNote) lookupNote.textContent = "The lunch ordering season has ended.";
     } else {
-      label.textContent = `Ordering week: ${dateFmt(WINDOW_START)} – ${dateFmt(WINDOW_END)}`;
+      label.textContent = `Ordering week: ${calendarDateFmt(WINDOW_START)} – ${calendarDateFmt(WINDOW_END)}`;
+      if (lookupNote) {
+        lookupNote.textContent = `We'll check orders placed for the current ordering week only (${calendarDateFmt(WINDOW_START)} – ${calendarDateFmt(WINDOW_END)}). Enter the phone number you used.`;
+      }
     }
   }
 
@@ -939,7 +958,7 @@
       return `
       <div class="day-check ${isChosen ? "checked" : ""}" data-id="${id}" data-day="${d.id}">
         <div class="dtext" style="margin-bottom:8px;">
-          <span class="dname">${d.dayName}, ${dateFmt(d.date)}</span>
+          <span class="dname">${d.dayName}, ${calendarDateFmt(d.date)}</span>
           <span class="ddeadline open">Order by ${dateFmt(d.deadline)} ${timeFmt(d.deadline)}</span>
         </div>
         <div class="option-list">
@@ -1260,7 +1279,10 @@
       if (!res.ok) throw new Error(data.error || "Could not check orders.");
 
       if (!data.orders || data.orders.length === 0) {
-        resultsEl.innerHTML = `<p class="lookup-empty">No upcoming orders found for that phone number. If you'd like to order, use the form below.</p>`;
+        const weekPart = data.weekStartIso && data.weekEndIso
+          ? ` for ${data.weekStartIso} – ${data.weekEndIso} (this week)`
+          : " this week";
+        resultsEl.innerHTML = `<p class="lookup-empty">No orders found${weekPart} for that phone number. If you'd like to order, use the form below.</p>`;
         return;
       }
 

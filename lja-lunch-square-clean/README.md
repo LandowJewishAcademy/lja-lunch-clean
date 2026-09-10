@@ -311,3 +311,75 @@ I could not test from this environment: an actual Resend delivery with
 a real PDF attachment landing in a real inbox — that first live send is
 worth watching closely in the Netlify function logs (**Functions →
 admin-daily-summary → logs**) the first morning it runs for real.
+
+## 10. Automatic order archiving (performance)
+
+The "orders" store never removed anything on its own — every order ever
+placed just kept piling up, and functions like the phone lookup had to
+scan the *entire* history every time. As the school year went on, this
+started timing out for real parents.
+
+**The fix:** `archive-old-orders.mjs` runs once a day (around 4-5 AM
+Eastern) and moves any order whose items are ALL more than 2 weeks in
+the past into a separate `archived-orders` store, removing it from the
+live `orders` store. An order is only archived if *every* item on it is
+old — if it has even one recent item, the whole order stays live. This
+keeps the live store roughly bounded to the last few weeks of activity
+instead of growing all year, which speeds up every function that reads
+from it: `get-orders`, `check-orders`, the teacher email, and the admin
+summary — none of them needed any code changes for this, since they
+just naturally scan less data now.
+
+Nothing is ever deleted by this — archived orders are still fully
+viewable on the staff page's **Archived orders** tab. This is different
+from the **Deleted orders** tab: archived orders are ordinary completed
+orders that just aged out; deleted orders were manually removed because
+something was cancelled/refunded.
+
+**To change the 2-week cutoff:** edit `ARCHIVE_AFTER_DAYS` in
+`archive-old-orders.mjs`.
+
+## 11. "Did I already order?" now only searches the current week
+
+`check-orders.mjs` used to scan every stored order for a phone number
+match, checking only whether each item's date was "today or later" —
+meaning it searched arbitrarily far into the future and (before
+archiving existed) arbitrarily far into the past too, contributing to
+the same slowdown described above.
+
+It now uses `getCurrentOrderingWeekBounds()` (in
+`_shared/schoolCalendar.mjs`) to compute the exact same Monday-Friday
+window the parent form itself is currently showing, and only searches
+within that. The lookup box on the form says so explicitly now too
+("We'll check orders placed for the current ordering week only..."),
+so parents aren't left wondering why an order from a different week
+didn't show up.
+
+## 12. A real timezone display bug, found and fixed
+
+While building the above, testing surfaced a genuine bug: the "Ordering
+week: ..." banner and each day's date label could display **one day
+off** for any visitor whose device timezone wasn't set to Eastern —
+even though the actual deadline enforcement (the part that really
+matters for whether an order goes through) was already correct.
+
+The cause: `dateFmt` was forced to always format in `America/New_York`
+after an earlier fix (for the deadline time, where that's genuinely
+necessary). But it was also being reused for values like `WINDOW_START`,
+`WINDOW_END`, and each day's date — which are *calendar-date-only*
+containers built from the visitor's own local time, already correctly
+anchored to the right Eastern calendar day. Formatting those through an
+explicitly different timezone could shift them backward by a day.
+
+**The fix:** there are now two formatters, used for two different kinds
+of values:
+- `dateFmt` / `timeFmt` — forced to `America/New_York`, used **only**
+  for the deadline (a genuine UTC instant, where the visitor's own
+  timezone must be ignored).
+- `calendarDateFmt` — no forced timezone, used for calendar-only values
+  (`WINDOW_START`, `WINDOW_END`, each day's date) that are already
+  correct as built.
+
+Verified directly by simulating both a UTC-timezone device and a real
+Eastern-timezone device against the exact same moment in time, and
+confirming both now show the identical, correct dates.

@@ -36,3 +36,11 @@ export function getDeletedOrdersStore() {
   return getNamedStore("deleted-orders");
 }
 
+// Archive for orders automatically moved out of the live "orders" store
+// once they're old enough (see archive-old-orders.mjs). Kept separate
+// from "deleted-orders" since these are ordinary completed orders that
+// simply aged out — not cancellations or refunds.
+export function getArchivedOrdersStore() {
+  return getNamedStore("archived-orders");
+}
+
