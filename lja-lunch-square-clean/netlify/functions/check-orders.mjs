@@ -29,10 +29,10 @@ export const handler = async function (event) {
   try {
     const store = getOrdersStore();
     const { blobs } = await store.list();
+    const records = await Promise.all(blobs.map(b => store.get(b.key, { type: "json" })));
 
     const matches = [];
-    for (const b of blobs) {
-      const record = await store.get(b.key, { type: "json" });
+    for (const record of records) {
       if (!record || record.parentPhone !== phoneDigits) continue;
 
       const upcomingItems = record.items.filter(i => i.dateId >= todayIso);
