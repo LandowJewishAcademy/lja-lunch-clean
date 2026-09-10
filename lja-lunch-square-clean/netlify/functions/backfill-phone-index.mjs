@@ -14,15 +14,17 @@
 // Safe to run more than once — it just overwrites the same index
 // entries, nothing gets duplicated or broken.
 //
-// Writes happen in parallel batches (not one at a time, and not all at
-// once) — with well over a thousand orders, writing sequentially took
-// long enough to exceed Netlify's function time limit and returned a
-// 502 to the browser. Batching keeps this fast without overwhelming the
-// storage API with too many simultaneous requests.
+// Each record's read+write happens together, in one pass, in parallel
+// batches — an earlier version did a full read pass across every order
+// THEN a full separate write pass, which doubled the number of
+// sequential round-trips needed and (combined with real network
+// latency being higher than expected) pushed total time past Netlify's
+// function timeout, returning a 502. This version does roughly half
+// the round trips for the same work.
 
 import { getOrdersStore, getPhoneIndexStore } from "./_shared/ordersStore.mjs";
 
-const BATCH_SIZE = 40;
+const BATCH_SIZE = 75;
 
 async function processInBatches(items, batchSize, fn) {
   for (let i = 0; i < items.length; i += batchSize) {
@@ -43,24 +45,28 @@ export const handler = async function (event) {
 
   let indexedCount = 0;
   let skippedCount = 0;
+  let errorCount = 0;
 
   try {
     const { blobs } = await ordersStore.list();
 
-    // Reads: fetch every order record in parallel batches.
-    const records = [];
+    // One pass: for each order, read it and (if valid) write its index
+    // entry, all within the same batched step — not two separate full
+    // passes over every record.
     await processInBatches(blobs, BATCH_SIZE, async (b) => {
-      const record = await ordersStore.get(b.key, { type: "json" });
-      records.push(record);
-    });
-
-    // Writes: build one index entry per valid record, in parallel batches.
-    const toIndex = records.filter(r => r && r.parentPhone && r.orderRef);
-    skippedCount = records.length - toIndex.length;
-
-    await processInBatches(toIndex, BATCH_SIZE, async (record) => {
-      await phoneIndexStore.setJSON(`${record.parentPhone}/${record.orderRef}`, { orderRef: record.orderRef });
-      indexedCount++;
+      try {
+        const record = await ordersStore.get(b.key, { type: "json" });
+        if (!record || !record.parentPhone || !record.orderRef) {
+          skippedCount++;
+          return;
+        }
+        await phoneIndexStore.setJSON(`${record.parentPhone}/${record.orderRef}`, { orderRef: record.orderRef });
+        indexedCount++;
+      } catch (err) {
+        // One bad record shouldn't take down the whole batch.
+        console.error(`Failed to index ${b.key}:`, err.message);
+        errorCount++;
+      }
     });
   } catch (err) {
     return { statusCode: 500, body: `Error: ${err.message}` };
@@ -68,6 +74,6 @@ export const handler = async function (event) {
 
   return {
     statusCode: 200,
-    body: `Backfill complete. Indexed ${indexedCount} orders, skipped ${skippedCount} (missing phone number). The phone lookup should be fast now.`,
+    body: `Backfill complete. Indexed ${indexedCount} orders, skipped ${skippedCount} (missing phone number), ${errorCount} individual errors. The phone lookup should be fast now.`,
   };
 };
