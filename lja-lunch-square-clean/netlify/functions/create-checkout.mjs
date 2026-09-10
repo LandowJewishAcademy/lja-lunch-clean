@@ -13,7 +13,7 @@
 //      metadata so the webhook can find this record again after payment.
 //   4. Returns the checkout URL for the front-end to redirect to.
 
-import { getOrdersStore } from "./_shared/ordersStore.mjs";
+import { getOrdersStore, getPhoneIndexStore } from "./_shared/ordersStore.mjs";
 import { randomUUID } from "node:crypto";
 import { validateLineItemDate } from "./_shared/schoolCalendar.mjs";
 
@@ -96,6 +96,18 @@ export const handler = async function (event) {
     await store.setJSON(orderRef, orderRecord);
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: `Could not save order: ${err.message}` }) };
+  }
+
+  // Index this order by phone number so "Did I already order?" can find
+  // it directly later, instead of having to scan every order ever
+  // placed. Not critical to the checkout itself — a failure here logs
+  // but doesn't block the parent from paying (the lookup has a slower
+  // fallback for anything not yet indexed, so nothing is ever lost).
+  try {
+    const phoneIndexStore = getPhoneIndexStore();
+    await phoneIndexStore.setJSON(`${parentPhoneDigits}/${orderRef}`, { orderRef });
+  } catch (err) {
+    console.error("Failed to write phone index entry (non-fatal):", err.message);
   }
 
   try {

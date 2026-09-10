@@ -1273,6 +1273,14 @@
     lookupBtn.textContent = "Checking…";
     resultsEl.innerHTML = `<p class="lookup-empty">Checking…</p>`;
 
+    // Update the message over time so it's clear this is still working,
+    // not stuck — a bare unchanging "Checking..." looks identical
+    // whether it's about to finish or has silently frozen.
+    const progressTimers = [
+      setTimeout(() => { resultsEl.innerHTML = `<p class="lookup-empty">Still checking — thanks for waiting…</p>`; }, 4000),
+      setTimeout(() => { resultsEl.innerHTML = `<p class="lookup-empty">This is taking longer than usual. Still working on it…</p>`; }, 10000),
+    ];
+
     try {
       const res = await fetch(`/.netlify/functions/check-orders?phone=${encodeURIComponent(digits)}`);
       const data = await res.json();
@@ -1311,6 +1319,7 @@
     } catch (err) {
       resultsEl.innerHTML = `<p class="lookup-empty">Something went wrong checking that number. Please try again.</p>`;
     } finally {
+      progressTimers.forEach(t => clearTimeout(t));
       lookupBtn.disabled = false;
       lookupBtn.textContent = originalLabel;
     }

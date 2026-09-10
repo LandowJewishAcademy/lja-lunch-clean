@@ -13,10 +13,16 @@
 //
 // An order is only archived if EVERY item on it is more than 2 weeks
 // old — if it has even one recent item, the whole order stays live.
+//
+// While it's already scanning every live order for archiving, it also
+// re-writes each one's phone-index entry (see _shared/ordersStore.mjs)
+// — cheap to do since the records are already fetched, and it means any
+// order that somehow didn't get indexed at checkout time self-heals
+// within a day, with no separate migration ever needed.
 
 export const config = { schedule: "0 9 * * *" }; // once daily, ~4-5am Eastern
 
-import { getOrdersStore, getArchivedOrdersStore } from "./_shared/ordersStore.mjs";
+import { getOrdersStore, getArchivedOrdersStore, getPhoneIndexStore } from "./_shared/ordersStore.mjs";
 
 const ARCHIVE_AFTER_DAYS = 14;
 
@@ -43,9 +49,11 @@ export default async () => {
 
   const ordersStore = getOrdersStore();
   const archiveStore = getArchivedOrdersStore();
+  const phoneIndexStore = getPhoneIndexStore();
 
   let archivedCount = 0;
   let checkedCount = 0;
+  let reindexedCount = 0;
 
   try {
     const { blobs } = await ordersStore.list();
@@ -55,6 +63,16 @@ export default async () => {
     for (let i = 0; i < blobs.length; i++) {
       const record = records[i];
       if (!record || !Array.isArray(record.items) || record.items.length === 0) continue;
+
+      // Self-heal the phone index for any order that predates it.
+      if (record.parentPhone && record.orderRef) {
+        try {
+          await phoneIndexStore.setJSON(`${record.parentPhone}/${record.orderRef}`, { orderRef: record.orderRef });
+          reindexedCount++;
+        } catch (err) {
+          console.error("Failed to re-index order during archive pass (non-fatal):", err.message);
+        }
+      }
 
       const allOld = record.items.every(item => item.dateId < cutoffIso);
       if (!allOld) continue;
@@ -70,7 +88,7 @@ export default async () => {
   }
 
   return new Response(
-    `Checked ${checkedCount} live orders, archived ${archivedCount} with all items before ${cutoffIso}.`,
+    `Checked ${checkedCount} live orders, re-indexed ${reindexedCount} for phone lookup, archived ${archivedCount} with all items before ${cutoffIso}.`,
     { status: 200 }
   );
 };

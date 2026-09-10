@@ -44,3 +44,14 @@ export function getArchivedOrdersStore() {
   return getNamedStore("archived-orders");
 }
 
+// Lightweight index: key = "{phoneDigits}/{orderRef}", value = just the
+// orderRef. Lets check-orders.mjs find a family's orders directly by
+// phone number (via a prefix list) instead of scanning every order ever
+// placed. New orders get indexed at checkout time (create-checkout.mjs);
+// archive-old-orders.mjs also re-indexes every live order once a day,
+// so older orders placed before this index existed get backfilled
+// automatically within a day, with zero manual migration needed.
+export function getPhoneIndexStore() {
+  return getNamedStore("phone-index");
+}
+
