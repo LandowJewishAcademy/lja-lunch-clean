@@ -92,7 +92,24 @@ function easternWallTimeToUTC(y, m, d, hh, mm, ss = 0) {
   return new Date(guessUTC.getTime() + correction);
 }
 
+// One-time deadline extensions — a specific lunch date whose cutoff
+// needs to be later than the normal 5:00 PM rule, usually because a
+// holiday or closure right before it left no normal school day to order
+// on. Key = the LUNCH date; value = the hour (Eastern, 0-23) the
+// deadline moves to, still on the same "day before" — e.g. { hour: 0 }
+// means midnight, i.e. the cutoff becomes the start of the lunch day
+// itself rather than 5:00 PM the evening before. Remove the line once
+// it's no longer needed — it's a one-time exception, not a standing rule.
+const DEADLINE_EXTENSIONS = {
+  "2026-09-14": { hour: 0 }, // 2-day holiday right before this Monday left parents no normal day to order — extended to midnight (added Sep 13, 2026)
+};
+
 export function deadlineFor(isoDateStr) {
+  const extension = DEADLINE_EXTENSIONS[isoDateStr];
+  if (extension) {
+    const [y, m, d] = isoDateStr.split("-").map(Number);
+    return easternWallTimeToUTC(y, m, d, extension.hour, 0, 0);
+  }
   const [y, m, d] = isoDateStr.split("-").map(Number);
   const dayBeforeUTC = new Date(Date.UTC(y, m - 1, d));
   dayBeforeUTC.setUTCDate(dayBeforeUTC.getUTCDate() - 1);

@@ -883,6 +883,14 @@
     return new Date() < d.deadline;
   }
 
+  // One-time deadline extensions — must match DEADLINE_EXTENSIONS in
+  // netlify/functions/_shared/schoolCalendar.mjs exactly, or the form
+  // will show a day as orderable right up until the backend silently
+  // rejects it (or vice versa). Remove the line once no longer needed.
+  const DEADLINE_EXTENSIONS = {
+    "2026-09-14": { hour: 0 }, // 2-day holiday right before this Monday left parents no normal day to order — extended to midnight (added Sep 13, 2026)
+  };
+
   // Build the final list of orderable days: weekdays in the current
   // automatic window, minus holidays/no-school days, each with its menu
   // item, price, and deadline (day before at 5:00 PM). Openness is checked
@@ -894,11 +902,17 @@
       const id = isoDate(lunchDate);
       if (OFF_DATES.has(id)) return;
       const menu = MENU_BY_WEEKDAY[lunchDate.getDay()];
-      const dayBefore = new Date(lunchDate);
-      dayBefore.setDate(dayBefore.getDate() - 1);
-      const deadline = easternWallTimeToUTC(
-        dayBefore.getFullYear(), dayBefore.getMonth() + 1, dayBefore.getDate(), DEADLINE_HOUR, 0, 0
-      );
+      let deadline;
+      const extension = DEADLINE_EXTENSIONS[id];
+      if (extension) {
+        deadline = easternWallTimeToUTC(lunchDate.getFullYear(), lunchDate.getMonth() + 1, lunchDate.getDate(), extension.hour, 0, 0);
+      } else {
+        const dayBefore = new Date(lunchDate);
+        dayBefore.setDate(dayBefore.getDate() - 1);
+        deadline = easternWallTimeToUTC(
+          dayBefore.getFullYear(), dayBefore.getMonth() + 1, dayBefore.getDate(), DEADLINE_HOUR, 0, 0
+        );
+      }
       days.push({
         id,
         date: lunchDate,
